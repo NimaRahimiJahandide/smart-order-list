@@ -3,12 +3,12 @@ import { ORDER_PRIORITIES } from '../constants/orders';
 
 const FIRST_NAMES = [
   'John', 'Jane', 'Alex', 'Emily', 'Michael',
-  'Sarah', 'David', 'Jessica', 'James', 'Elena'
+  'Sarah', 'David', 'Jessica', 'James', 'Elena',
 ];
 
 const LAST_NAMES = [
   'Smith', 'Doe', 'Johnson', 'Williams', 'Brown',
-  'Jones', 'Miller', 'Davis', 'Garcia', 'Rodriguez'
+  'Jones', 'Miller', 'Davis', 'Garcia', 'Rodriguez',
 ];
 
 const DOMAINS = [
@@ -16,51 +16,50 @@ const DOMAINS = [
   'yahoo.com',
   'outlook.com',
   'proton.me',
-  'corporate.com'
+  'corporate.com',
 ];
 
-/**
- * تولید سفارش‌های ساختگی برای محیط تست
- */
+// Simple deterministic pseudo-random (seeded LCG) so the mock database
+// is stable across hot-reloads and SSR/client hydration.
+function createSeededRandom(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0x100000000;
+  };
+}
+
 export function generateMockOrders(count = 250): Order[] {
+  const rand = createSeededRandom(42);
   const orders: Order[] = [];
   const now = new Date();
 
   for (let i = 1; i <= count; i++) {
-    const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
-    const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
-
+    const firstName = FIRST_NAMES[Math.floor(rand() * FIRST_NAMES.length)];
+    const lastName  = LAST_NAMES[Math.floor(rand() * LAST_NAMES.length)];
     const customerName = `${firstName} ${lastName}`;
-
     const email =
       `${firstName.toLowerCase()}.${lastName.toLowerCase()}` +
-      `@${DOMAINS[Math.floor(Math.random() * DOMAINS.length)]}`;
+      `@${DOMAINS[Math.floor(rand() * DOMAINS.length)]}`;
 
-    // توزیع طبیعی وضعیت سفارش
-    const statusRand = Math.random();
+    const statusRand = rand();
     let status: OrderStatus = 'pending';
-
-    if (statusRand > 0.85) status = 'cancelled';
+    if      (statusRand > 0.85) status = 'cancelled';
     else if (statusRand > 0.55) status = 'delivered';
     else if (statusRand > 0.35) status = 'shipped';
     else if (statusRand > 0.15) status = 'paid';
 
-    const priority =
-      ORDER_PRIORITIES[Math.floor(Math.random() * ORDER_PRIORITIES.length)];
+    const priority: OrderPriority =
+      ORDER_PRIORITIES[Math.floor(rand() * ORDER_PRIORITIES.length)];
 
-    const itemsCount = Math.floor(Math.random() * 8) + 1;
-
+    const itemsCount  = Math.floor(rand() * 8) + 1;
     const totalAmount = parseFloat(
-      (
-        itemsCount * (Math.random() * 45 + 5) +
-        Math.random() * 15
-      ).toFixed(2)
+      (itemsCount * (rand() * 45 + 5) + rand() * 15).toFixed(2),
     );
 
-    // تاریخ‌های پراکنده در ۴۵ روز اخیر
-    const daysAgo = Math.floor(Math.random() * 45);
+    const daysAgo  = Math.floor(rand() * 45);
     const createdAt = new Date(
-      now.getTime() - daysAgo * 24 * 60 * 60 * 1000
+      now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
     ).toISOString();
 
     orders.push({
@@ -76,16 +75,13 @@ export function generateMockOrders(count = 250): Order[] {
   }
 
   return orders.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
 
-// Singleton pattern for client-side persistence representation
+// Singleton — stable across the lifetime of the JS module
 let clientSideMockDatabase: Order[] | null = null;
 
-/**
- * دریافت مجموعه دیتابیس mock (کلاینت)
- */
 export function getMockOrdersCollection(): Order[] {
   if (!clientSideMockDatabase) {
     clientSideMockDatabase = generateMockOrders(240);
