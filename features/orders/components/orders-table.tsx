@@ -109,36 +109,36 @@ export const OrdersTable: React.FC<TableProps> = ({
 
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/75 dark:border-slate-800 dark:bg-slate-900/50 sticky top-0 backdrop-blur-sm z-10">
-              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-center text-slate-500 dark:text-slate-400">
                 {LABELS.id}
               </th>
-              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-center text-slate-500 dark:text-slate-400">
                 {LABELS.customer}
               </th>
-              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-center text-slate-500 dark:text-slate-400">
                 {LABELS.status}
               </th>
-              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-center text-slate-500 dark:text-slate-400">
                 {LABELS.priority}
               </th>
-              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <th className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-center text-slate-500 dark:text-slate-400">
                 {LABELS.items}
               </th>
 
               <th
                 onClick={() => toggleSort('totalAmount')}
-                className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200 text-slate-500 dark:text-slate-400"
+                className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-center cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200 text-slate-500 dark:text-slate-400"
               >
-                <div className="flex items-center">
+                <div className="flex text-center items-center justify-center">
                   {LABELS.totalAmount} {renderSortIcon('totalAmount')}
                 </div>
               </th>
 
               <th
                 onClick={() => toggleSort('createdAt')}
-                className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200 text-slate-500 dark:text-slate-400"
+                className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-center cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200 text-slate-500 dark:text-slate-400"
               >
-                <div className="flex items-center">
+                <div className="flex text-center items-center justify-center">
                   {LABELS.createdAt} {renderSortIcon('createdAt')}
                 </div>
               </th>
@@ -181,43 +181,43 @@ export const OrdersTable: React.FC<TableProps> = ({
                   onClick={() => onSelectOrder(order)}
                   className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
                 >
-                  <td className="px-5 py-3.5 text-sm font-medium text-slate-900 dark:text-white">
+                  <td className="px-5 py-3.5 text-sm font-medium text-center text-slate-900 dark:text-white">
                     {order.id}
                   </td>
 
-                  <td className="px-5 py-3.5">
-                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                  <td className="px-5 py-3.5 text-center">
+                    <div className="text-sm font-medium  text-slate-900 dark:text-white">
                       {order.customerName}
                     </div>
                     <div className="text-xs text-slate-400">{order.email}</div>
                   </td>
 
-                  <td className="px-5 py-3.5">
+                  <td className="px-5 py-3.5 text-center">
                     <Badge variant={order.status}>
                       {STATUS_LABELS[order.status]}
                     </Badge>
                   </td>
 
-                  <td className="px-5 py-3.5">
+                  <td className="px-5 py-3.5 text-center">
                     <Badge variant={order.priority}>{order.priority}</Badge>
                   </td>
 
-                  <td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-400">
+                  <td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-400 text-center">
                     {order.itemsCount}
                   </td>
 
-                  <td className="px-5 py-3.5 text-sm font-medium text-slate-900 dark:text-white">
+                  <td className="px-5 py-3.5 text-sm font-medium text-slate-900 dark:text-white text-center">
                     ${order.totalAmount.toFixed(2)}
                   </td>
 
-                  <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400">
+                  <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400 text-center">
                     {new Date(order.createdAt).toLocaleDateString('fa-IR')}
                   </td>
 
                   <td className="px-5 py-3.5 text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => onSelectOrder(order)}
-                      className="rounded-lg p-1 text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="rounded-lg p-1 text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                       aria-label={`مشاهده جزئیات ${order.id}`}
                     >
                       <EyeSVG className="h-4 w-4" />
@@ -247,36 +247,36 @@ export const OrdersTable: React.FC<TableProps> = ({
             onClick={() => onFilterChange({ page: 1 })}
             disabled={filters.page === 1 || isLoading}
             aria-label={LABELS.firstPage}
-            className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+            className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 cursor-pointer disabled:cursor-not-allowed"
           >
-            <ChevronsLeftSVG className="h-4 w-4" />
+            <ChevronsRightSVG className="h-4 w-4" />
           </button>
 
           <button
             onClick={() => onFilterChange({ page: Math.max(filters.page - 1, 1) })}
             disabled={filters.page === 1 || isLoading}
             aria-label={LABELS.prevPage}
-            className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+            className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 cursor-pointer disabled:cursor-not-allowed"
           >
-            <ChevronLeftSVG className="h-4 w-4" />
+            <ChevronRightSVG className="h-4 w-4" />
           </button>
 
           <button
             onClick={() => onFilterChange({ page: Math.min(filters.page + 1, totalPages) })}
             disabled={filters.page === totalPages || isLoading}
             aria-label={LABELS.nextPage}
-            className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+            className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 cursor-pointer disabled:cursor-not-allowed"
           >
-            <ChevronRightSVG className="h-4 w-4" />
+            <ChevronLeftSVG className="h-4 w-4" />
           </button>
 
           <button
             onClick={() => onFilterChange({ page: totalPages })}
             disabled={filters.page === totalPages || isLoading}
             aria-label={LABELS.lastPage}
-            className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+            className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 cursor-pointer disabled:cursor-not-allowed"
           >
-            <ChevronsRightSVG className="h-4 w-4" />
+            <ChevronsLeftSVG className="h-4 w-4" />
           </button>
 
         </div>

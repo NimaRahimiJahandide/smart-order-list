@@ -57,7 +57,7 @@ export const OrderDetailsModal: React.FC<DetailsProps> = ({ order, onClose }) =>
 
           <button
             onClick={handleCopyId}
-            className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+            className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400 cursor-pointer"
             aria-label="کپی شناسه سفارش"
           >
             {copied ? (

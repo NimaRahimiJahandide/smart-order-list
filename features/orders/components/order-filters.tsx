@@ -66,9 +66,7 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-
         {/* Search */}
         <div className="relative flex-1 max-w-md">
           <svg
@@ -92,14 +90,13 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
             placeholder={LABELS.search}
             value={filters.search}
             onChange={handleSearchChange}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-blue-500"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-blue-500"
             aria-label="جستجوی سفارش‌ها"
           />
         </div>
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
-
           <select
             value={filters.dateRange}
             onChange={(e) =>
@@ -108,12 +105,18 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
                 page: 1,
               })
             }
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 cursor-pointer"
             aria-label="فیلتر بازه زمانی"
           >
-            <option value="all">{LABELS.allTime}</option>
-            <option value="7">{LABELS.last7}</option>
-            <option value="30">{LABELS.last30}</option>
+            <option value="all" className="cursor-pointer">
+              {LABELS.allTime}
+            </option>
+            <option value="7" className="cursor-pointer">
+              {LABELS.last7}
+            </option>
+            <option value="30" className="cursor-pointer">
+              {LABELS.last30}
+            </option>
           </select>
 
           <select
@@ -124,10 +127,12 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
                 page: 1,
               })
             }
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 cursor-pointer"
             aria-label="فیلتر اولویت"
           >
-            <option value="all">{LABELS.allPriorities}</option>
+            <option value="all" className="cursor-pointer">
+              {LABELS.allPriorities}
+            </option>
             {ORDER_PRIORITIES.map((p) => (
               <option key={p} value={p}>
                 {p.toUpperCase()}
@@ -138,7 +143,7 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
           <button
             onClick={() => exportOrdersToCSV(allFilteredOrders)}
             disabled={allFilteredOrders.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -161,7 +166,7 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
 
           <button
             onClick={onReset}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer"
             title={LABELS.reset}
           >
             <svg
@@ -197,7 +202,7 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
               key={status}
               type="button"
               onClick={() => toggleStatus(status)}
-              className={`text-xs px-3 py-1 rounded-full font-medium transition-all duration-150 border ${
+              className={`text-xs px-3 py-1 rounded-full font-medium transition-all duration-150 border cursor-pointer ${
                 isActive
                   ? "bg-blue-600 border-blue-600 text-white shadow-sm"
                   : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
@@ -208,7 +213,6 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
           );
         })}
       </div>
-
     </div>
   );
 };
