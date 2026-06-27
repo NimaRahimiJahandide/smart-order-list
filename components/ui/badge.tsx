@@ -14,6 +14,18 @@ interface BadgeProps {
   children: React.ReactNode;
 }
 
+const labelMap: Record<BadgeProps["variant"], string> = {
+  pending: "در انتظار",
+  paid: "پرداخت شده",
+  shipped: "ارسال شده",
+  delivered: "تحویل داده شده",
+  cancelled: "لغو شده",
+  low: "کم",
+  medium: "متوسط",
+  high: "زیاد",
+  neutral: "عادی",
+};
+
 export const Badge: React.FC<BadgeProps> = React.memo(({ variant, children }) => {
   const baseStyles =
     "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide uppercase";
@@ -33,7 +45,11 @@ export const Badge: React.FC<BadgeProps> = React.memo(({ variant, children }) =>
       ? "bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-400 border border-orange-200 dark:border-orange-900/50"
       : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300";
 
-  return <span className={`${baseStyles} ${variantClass}`}>{children}</span>;
+  return (
+    <span className={baseStyles + " " + variantClass}>
+      {labelMap[variant]}
+    </span>
+  );
 });
 
 Badge.displayName = "Badge";

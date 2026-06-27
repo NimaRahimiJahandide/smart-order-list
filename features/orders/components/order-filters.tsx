@@ -22,6 +22,27 @@ interface FilterProps {
   allFilteredOrders: Order[];
 }
 
+const LABELS = {
+  search: "جستجو بر اساس نام مشتری یا ایمیل...",
+  dateRange: "بازه زمانی",
+  priority: "اولویت",
+  exportCSV: "خروجی CSV",
+  reset: "ریست فیلترها",
+  statuses: "وضعیت‌ها",
+  allTime: "کل زمان",
+  last7: "۷ روز اخیر",
+  last30: "۳۰ روز اخیر",
+  allPriorities: "همه اولویت‌ها",
+} as const;
+
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: "در انتظار",
+  paid: "پرداخت شده",
+  shipped: "ارسال شده",
+  delivered: "تحویل داده شده",
+  cancelled: "لغو شده",
+};
+
 export const OrderFiltersComponent: React.FC<FilterProps> = ({
   filters,
   onFilterChange,
@@ -38,13 +59,16 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
       const nextStatus = isSelected
         ? prev.status.filter((s) => s !== status)
         : [...prev.status, status];
+
       return { status: nextStatus, page: 1 };
     });
   };
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+
         {/* Search */}
         <div className="relative flex-1 max-w-md">
           <svg
@@ -62,18 +86,20 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
             <path d="m21 21-4.34-4.34" />
             <circle cx="11" cy="11" r="8" />
           </svg>
+
           <input
             type="text"
-            placeholder="Search by customer name or email..."
+            placeholder={LABELS.search}
             value={filters.search}
             onChange={handleSearchChange}
             className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-blue-500"
-            aria-label="Search orders"
+            aria-label="جستجوی سفارش‌ها"
           />
         </div>
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
+
           <select
             value={filters.dateRange}
             onChange={(e) =>
@@ -83,11 +109,11 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
               })
             }
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
-            aria-label="Filter by timeline range"
+            aria-label="فیلتر بازه زمانی"
           >
-            <option value="all">All Time</option>
-            <option value="7">Last 7 Days</option>
-            <option value="30">Last 30 Days</option>
+            <option value="all">{LABELS.allTime}</option>
+            <option value="7">{LABELS.last7}</option>
+            <option value="30">{LABELS.last30}</option>
           </select>
 
           <select
@@ -99,9 +125,9 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
               })
             }
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
-            aria-label="Filter by priority degree"
+            aria-label="فیلتر اولویت"
           >
-            <option value="all">All Priorities</option>
+            <option value="all">{LABELS.allPriorities}</option>
             {ORDER_PRIORITIES.map((p) => (
               <option key={p} value={p}>
                 {p.toUpperCase()}
@@ -130,13 +156,13 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <path d="m7 10 5 5 5-5" />
             </svg>
-            Export CSV
+            {LABELS.exportCSV}
           </button>
 
           <button
             onClick={onReset}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            title="Reset active query filters"
+            title={LABELS.reset}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -157,13 +183,15 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
         </div>
       </div>
 
-      {/* Multi-Select Badges Row */}
+      {/* Status Filters */}
       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
         <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-2">
-          Statuses:
+          {LABELS.statuses}:
         </span>
+
         {ORDER_STATUSES.map((status) => {
           const isActive = filters.status.includes(status);
+
           return (
             <button
               key={status}
@@ -175,11 +203,12 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
                   : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
               }`}
             >
-              {status}
+              {STATUS_LABELS[status]}
             </button>
           );
         })}
       </div>
+
     </div>
   );
 };

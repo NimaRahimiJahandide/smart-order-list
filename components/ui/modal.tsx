@@ -32,14 +32,15 @@ export const Modal: React.FC<ModalProps> = ({
     };
   }, [isOpen]);
 
-  // Handle ESC Keyboard Event
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+
       if (e.key === "Tab" && modalRef.current) {
         const focusableElements = modalRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
+
         const firstElement = focusableElements[0] as HTMLElement;
         const lastElement = focusableElements[
           focusableElements.length - 1
@@ -70,7 +71,7 @@ export const Modal: React.FC<ModalProps> = ({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity dark:bg-black/70"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -79,19 +80,20 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalRef}
         tabIndex={-1}
-        className="relative w-full max-w-lg overflow-hidden rounded-xl bg-white p-6 shadow-2xl transition-all dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:ring-0"
+        className="relative w-full max-w-lg overflow-hidden rounded-xl bg-white dark:bg-slate-900 p-6 shadow-2xl transition-all border border-slate-200 dark:border-slate-800 outline-none"
       >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
           <h3
             id="modal-title"
-            className="text-lg font-semibold text-slate-900 dark:text-white"
+            className="text-lg font-semibold text-slate-900 dark:text-slate-100"
           >
             {title}
           </h3>
+
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
-            aria-label="Close modal"
+            aria-label="بستن پنجره"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -110,7 +112,10 @@ export const Modal: React.FC<ModalProps> = ({
             </svg>
           </button>
         </div>
-        <div className="mt-4">{children}</div>
+
+        <div className="mt-4 text-slate-700 dark:text-slate-300">
+          {children}
+        </div>
       </div>
     </div>
   );

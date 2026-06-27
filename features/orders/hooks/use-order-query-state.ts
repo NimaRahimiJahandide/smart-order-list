@@ -13,9 +13,9 @@ export function useOrderQueryState() {
     const search = searchParams.get('search') || '';
     const priority = (searchParams.get('priority') || 'all') as OrderPriority | 'all';
     const dateRange = (searchParams.get('date') || 'all') as DateFilterOption;
-    
+
     const sortRaw = searchParams.get('sort') || 'createdAt-desc';
-    const [sortBy, sortOrder] = sortRaw.split('-') as [ 'createdAt' | 'totalAmount', 'asc' | 'desc' ];
+    const [sortBy, sortOrder] = sortRaw.split('-') as ['createdAt' | 'totalAmount', 'asc' | 'desc'];
 
     const statusRaw = searchParams.get('status');
     const status: OrderStatus[] = statusRaw ? (statusRaw.split(',') as OrderStatus[]) : [];
@@ -31,39 +31,65 @@ export function useOrderQueryState() {
     };
   }, [searchParams]);
 
-  const setFilters = useCallback((updater: Partial<OrderFilters> | ((prev: OrderFilters) => Partial<OrderFilters>)) => {
-    const currentParams = new URLSearchParams(window.location.search);
-    const nextFilters = typeof updater === 'function' ? updater(filters) : updater;
-    
-    const merged = { ...filters, ...nextFilters };
+  const setFilters = useCallback(
+    (
+      updater:
+        | Partial<OrderFilters>
+        | ((prev: OrderFilters) => Partial<OrderFilters>)
+    ) => {
+      const currentParams = new URLSearchParams(window.location.search);
+      const nextFilters =
+        typeof updater === 'function' ? updater(filters) : updater;
 
-    // Page updates
-    if (merged.page && merged.page > 1) currentParams.set('page', merged.page.toString());
-    else currentParams.delete('page');
+      const merged = { ...filters, ...nextFilters };
 
-    // Search updates
-    if (merged.search) currentParams.set('search', merged.search);
-    else currentParams.delete('search');
+      // صفحه
+      if (merged.page && merged.page > 1) {
+        currentParams.set('page', merged.page.toString());
+      } else {
+        currentParams.delete('page');
+      }
 
-    // Status multi-select updates
-    if (merged.status && merged.status.length > 0) currentParams.set('status', merged.status.join(','));
-    else currentParams.delete('status');
+      // جستجو
+      if (merged.search) {
+        currentParams.set('search', merged.search);
+      } else {
+        currentParams.delete('search');
+      }
 
-    // Priority updates
-    if (merged.priority && merged.priority !== 'all') currentParams.set('priority', merged.priority);
-    else currentParams.delete('priority');
+      // وضعیت‌ها
+      if (merged.status && merged.status.length > 0) {
+        currentParams.set('status', merged.status.join(','));
+      } else {
+        currentParams.delete('status');
+      }
 
-    // Date range updates
-    if (merged.dateRange && merged.dateRange !== 'all') currentParams.set('date', merged.dateRange);
-    else currentParams.delete('date');
+      // اولویت
+      if (merged.priority && merged.priority !== 'all') {
+        currentParams.set('priority', merged.priority);
+      } else {
+        currentParams.delete('priority');
+      }
 
-    // Sorting updates
-    if (merged.sortBy && merged.sortOrder) {
-      currentParams.set('sort', `${merged.sortBy}-${merged.sortOrder}`);
-    }
+      // بازه زمانی
+      if (merged.dateRange && merged.dateRange !== 'all') {
+        currentParams.set('date', merged.dateRange);
+      } else {
+        currentParams.delete('date');
+      }
 
-    router.push(`?${currentParams.toString()}`, { scroll: false });
-  }, [filters, router]);
+      // مرتب‌سازی
+      if (merged.sortBy && merged.sortOrder) {
+        currentParams.set(
+          'sort',
+          `${merged.sortBy}-${merged.sortOrder}`
+        );
+      }
+
+      router.push(`?${currentParams.toString()}`, { scroll: false });
+    },
+    [filters, router]
+  );
 
   const resetFilters = useCallback(() => {
     router.push('?', { scroll: false });

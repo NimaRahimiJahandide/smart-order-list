@@ -11,6 +11,8 @@ export interface Order {
   totalAmount: number;
   createdAt: string; // ISO String
   itemsCount: number;
+  statusLabel?: string;
+  priorityLabel?: string;
 }
 
 export interface OrderStats {
