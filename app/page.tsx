@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useOrderQueryState } from "@/features/orders/hooks/use-order-query-state";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -24,48 +24,69 @@ const FALLBACK_STATS: OrderStats = {
 
 export default function OrdersManagementDashboardPage() {
   const { filters, setFilters, resetFilters } = useOrderQueryState();
-  const [isPending, startTransition] = useTransition();
 
   const [payload, setPayload] = useState<PaginatedResult<Order> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const debouncedSearchValue = useDebounce(filters.search, 300);
+  // debounce برای سرچ (300ms) و برای بقیه فیلترها (150ms)
+  const debouncedSearch = useDebounce(filters.search, 300);
+  const debouncedStatus = useDebounce(filters.status, 150);
+  const debouncedPriority = useDebounce(filters.priority, 150);
+  const debouncedDateRange = useDebounce(filters.dateRange, 150);
+  const debouncedSortBy = useDebounce(filters.sortBy, 150);
+  const debouncedSortOrder = useDebounce(filters.sortOrder, 150);
+  const debouncedPage = useDebounce(filters.page, 150);
+
+  // برای جلوگیری از race condition بین درخواست‌های همزمان
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    let active = true;
+    // درخواست قبلی رو لغو میکنیم
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    abortRef.current = new AbortController();
 
-    const executeQueryResolution = () => {
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
-      const processingFilters = { ...filters, search: debouncedSearchValue };
-
-      fetchOrders(processingFilters)
-        .then((result) => {
-          if (!active) return;
-          setPayload(result);
-        })
-        .catch((err: Error) => {
-          if (!active) return;
-          setError(err.message || "خطای سیستم در هنگام دریافت داده‌ها رخ داد.");
-        });
+    const processingFilters = {
+      ...filters,
+      search: debouncedSearch,
+      status: debouncedStatus,
+      priority: debouncedPriority,
+      dateRange: debouncedDateRange,
+      sortBy: debouncedSortBy,
+      sortOrder: debouncedSortOrder,
+      page: debouncedPage,
     };
 
-    startTransition(() => {
-      executeQueryResolution();
-    });
+    fetchOrders(processingFilters)
+      .then((result) => {
+        setPayload(result);
+        setIsLoading(false);
+      })
+      .catch((err: Error) => {
+        if (err.name === "AbortError") return;
+        setError(err.message || "خطای سیستم در هنگام دریافت داده‌ها رخ داد.");
+        setIsLoading(false);
+      });
 
     return () => {
-      active = false;
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
     };
   }, [
-    debouncedSearchValue,
-    filters.status,
-    filters.priority,
-    filters.dateRange,
-    filters.page,
-    filters.sortBy,
-    filters.sortOrder,
+    debouncedSearch,
+    debouncedStatus,
+    debouncedPriority,
+    debouncedDateRange,
+    debouncedSortBy,
+    debouncedSortOrder,
+    debouncedPage,
   ]);
 
   return (
@@ -85,7 +106,7 @@ export default function OrdersManagementDashboardPage() {
       {/* Metrics Dashboard Row */}
       <DashboardStats
         stats={payload?.filteredStats ?? FALLBACK_STATS}
-        isLoading={isPending}
+        isLoading={isLoading}
       />
 
       {/* Controls Filters Grid Ecosystem */}
@@ -138,7 +159,7 @@ export default function OrdersManagementDashboardPage() {
           totalCount={payload?.totalCount ?? 0}
           filters={filters}
           onFilterChange={setFilters}
-          isLoading={isPending}
+          isLoading={isLoading}
           onSelectOrder={setSelectedOrder}
         />
       )}
