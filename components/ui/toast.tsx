@@ -34,12 +34,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 shadow-lg rounded-xl border border-slate-200 dark:border-slate-800 animate-in slide-in-from-bottom-5 duration-200"
           >
             {toast.type === 'success' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="h-5 w-5 text-emerald-500 flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-emerald-500 flex-shrink-0">
                 <circle cx="12" cy="12" r="10"/>
                 <path d="m9 12 2 2 4-4"/>
               </svg>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="h-5 w-5 text-rose-500 flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-rose-500 flex-shrink-0">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" x2="12" y1="8" y2="12"/>
                 <line x1="12" x2="12.01" y1="16" y2="16"/>
