@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Copy, Check } from 'lucide-react';
 import { Order } from '@/types/orders';
 import { Modal } from '@/components/ui/modal';
 import { Badge } from '@/components/ui/badge';
@@ -42,7 +41,7 @@ export const OrderDetailsModal: React.FC<DetailsProps> = ({ order, onClose }) =>
             className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
             aria-label="Copy identifier system hash code"
           >
-            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="h-3.5 w-3.5 text-emerald-500"><path d="M20 6 9 17l-5-5"/></svg> : <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="w-3.5 h-3.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>}
             {copied ? 'Copied' : 'Copy ID'}
           </button>
         </div>
