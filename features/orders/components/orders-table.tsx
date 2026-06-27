@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye } from 'lucide-react';
 import { Order, OrderFilters } from '@/types/orders';
 import { ITEMS_PER_PAGE } from '@/constants/orders';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +13,39 @@ interface TableProps {
   isLoading: boolean;
   onSelectOrder: (order: Order) => void;
 }
+
+// کامپوننت‌های محلی SVG برای جایگزینی Lucide
+const ArrowUpDownSVG = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+);
+
+const ArrowUpSVG = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+);
+
+const ArrowDownSVG = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+);
+
+const ChevronsLeftSVG = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
+);
+
+const ChevronLeftSVG = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+);
+
+const ChevronRightSVG = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+);
+
+const ChevronsRightSVG = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m13 17 5-5-5-5"/><path d="m6 17 5-5-5-5"/></svg>
+);
+
+const EyeSVG = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
+);
 
 export const OrdersTable: React.FC<TableProps> = ({
   orders,
@@ -34,11 +66,11 @@ export const OrdersTable: React.FC<TableProps> = ({
   };
 
   const renderSortIcon = (field: 'createdAt' | 'totalAmount') => {
-    if (filters.sortBy !== field) return <ArrowUpDown className="ml-1.5 h-3.5 w-3.5 opacity-40" />;
+    if (filters.sortBy !== field) return <ArrowUpDownSVG className="ml-1.5 h-3.5 w-3.5 opacity-40" />;
     return filters.sortOrder === 'asc' ? (
-      <ArrowUp className="ml-1.5 h-3.5 w-3.5 text-blue-500" />
+      <ArrowUpSVG className="ml-1.5 h-3.5 w-3.5 text-blue-500" />
     ) : (
-      <ArrowDown className="ml-1.5 h-3.5 w-3.5 text-blue-500" />
+      <ArrowDownSVG className="ml-1.5 h-3.5 w-3.5 text-blue-500" />
     );
   };
 
@@ -113,7 +145,7 @@ export const OrdersTable: React.FC<TableProps> = ({
                       className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-blue-500"
                       aria-label={`View details for ${order.id}`}
                     >
-                      <Eye className="h-4 w-4" />
+                      <EyeSVG className="h-4 w-4" />
                     </button>
                   </td>
                 </tr>
@@ -136,7 +168,7 @@ export const OrdersTable: React.FC<TableProps> = ({
             className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
             aria-label="First page"
           >
-            <ChevronsLeft className="h-4 w-4" />
+            <ChevronsLeftSVG className="h-4 w-4" />
           </button>
           <button
             onClick={() => onFilterChange({ page: Math.max(filters.page - 1, 1) })}
@@ -144,7 +176,7 @@ export const OrdersTable: React.FC<TableProps> = ({
             className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
             aria-label="Previous page"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeftSVG className="h-4 w-4" />
           </button>
           <button
             onClick={() => onFilterChange({ page: Math.min(filters.page + 1, totalPages) })}
@@ -152,7 +184,7 @@ export const OrdersTable: React.FC<TableProps> = ({
             className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
             aria-label="Next page"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRightSVG className="h-4 w-4" />
           </button>
           <button
             onClick={() => onFilterChange({ page: totalPages })}
@@ -160,7 +192,7 @@ export const OrdersTable: React.FC<TableProps> = ({
             className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
             aria-label="Last page"
           >
-            <ChevronsRight className="h-4 w-4" />
+            <ChevronsRightSVG className="h-4 w-4" />
           </button>
         </div>
       </div>
