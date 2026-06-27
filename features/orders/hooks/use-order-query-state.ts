@@ -2,32 +2,70 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
-import { OrderFilters, OrderStatus, OrderPriority, DateFilterOption } from '@/types/orders';
+import {
+  OrderFilters,
+  OrderStatus,
+  OrderPriority,
+  DateFilterOption,
+} from '@/types/orders';
+import { ORDER_STATUSES, ORDER_PRIORITIES } from '@/constants/orders';
+
+const VALID_SORT_FIELDS  = ['createdAt', 'totalAmount'] as const;
+const VALID_SORT_ORDERS  = ['asc', 'desc'] as const;
+const VALID_DATE_RANGES  = ['7', '30', 'all'] as const;
+
+type SortField = (typeof VALID_SORT_FIELDS)[number];
+type SortOrder = (typeof VALID_SORT_ORDERS)[number];
+
+function parseSortField(raw: string | null): SortField {
+  const [field] = (raw ?? '').split('-');
+  return VALID_SORT_FIELDS.includes(field as SortField)
+    ? (field as SortField)
+    : 'createdAt';
+}
+
+function parseSortOrder(raw: string | null): SortOrder {
+  const [, order] = (raw ?? '').split('-');
+  return VALID_SORT_ORDERS.includes(order as SortOrder)
+    ? (order as SortOrder)
+    : 'desc';
+}
 
 export function useOrderQueryState() {
-  const router = useRouter();
+  const router       = useRouter();
   const searchParams = useSearchParams();
 
   const filters: OrderFilters = useMemo(() => {
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const search = searchParams.get('search') || '';
-    const priority = (searchParams.get('priority') || 'all') as OrderPriority | 'all';
-    const dateRange = (searchParams.get('date') || 'all') as DateFilterOption;
-
-    const sortRaw = searchParams.get('sort') || 'createdAt-desc';
-    const [sortBy, sortOrder] = sortRaw.split('-') as ['createdAt' | 'totalAmount', 'asc' | 'desc'];
-
+    const pageRaw   = parseInt(searchParams.get('page') ?? '1', 10);
+    const search    = searchParams.get('search') ?? '';
+    const sortRaw   = searchParams.get('sort');
     const statusRaw = searchParams.get('status');
-    const status: OrderStatus[] = statusRaw ? (statusRaw.split(',') as OrderStatus[]) : [];
+    const dateRaw   = (searchParams.get('date') ?? 'all') as DateFilterOption;
+    const prioRaw   = (searchParams.get('priority') ?? 'all') as OrderPriority | 'all';
+
+    const status: OrderStatus[] = statusRaw
+      ? (statusRaw.split(',').filter((s) =>
+          ORDER_STATUSES.includes(s as OrderStatus),
+        ) as OrderStatus[])
+      : [];
+
+    const priority =
+      prioRaw !== 'all' && ORDER_PRIORITIES.includes(prioRaw as OrderPriority)
+        ? (prioRaw as OrderPriority)
+        : 'all';
+
+    const dateRange = VALID_DATE_RANGES.includes(dateRaw as typeof VALID_DATE_RANGES[number])
+      ? dateRaw
+      : 'all';
 
     return {
-      page: isNaN(page) ? 1 : page,
+      page:      isNaN(pageRaw) || pageRaw < 1 ? 1 : pageRaw,
       search,
       status,
       priority,
       dateRange,
-      sortBy: sortBy || 'createdAt',
-      sortOrder: sortOrder || 'desc',
+      sortBy:    parseSortField(sortRaw),
+      sortOrder: parseSortOrder(sortRaw),
     };
   }, [searchParams]);
 
@@ -35,60 +73,25 @@ export function useOrderQueryState() {
     (
       updater:
         | Partial<OrderFilters>
-        | ((prev: OrderFilters) => Partial<OrderFilters>)
+        | ((prev: OrderFilters) => Partial<OrderFilters>),
     ) => {
-      const currentParams = new URLSearchParams(window.location.search);
-      const nextFilters =
+      const next =
         typeof updater === 'function' ? updater(filters) : updater;
+      const merged = { ...filters, ...next };
 
-      const merged = { ...filters, ...nextFilters };
+      const params = new URLSearchParams();
 
-      // صفحه
-      if (merged.page && merged.page > 1) {
-        currentParams.set('page', merged.page.toString());
-      } else {
-        currentParams.delete('page');
-      }
+      if (merged.page > 1)            params.set('page', String(merged.page));
+      if (merged.search)              params.set('search', merged.search);
+      if (merged.status.length > 0)   params.set('status', merged.status.join(','));
+      if (merged.priority !== 'all')  params.set('priority', merged.priority);
+      if (merged.dateRange !== 'all') params.set('date', merged.dateRange);
 
-      // جستجو
-      if (merged.search) {
-        currentParams.set('search', merged.search);
-      } else {
-        currentParams.delete('search');
-      }
+      params.set('sort', `${merged.sortBy}-${merged.sortOrder}`);
 
-      // وضعیت‌ها
-      if (merged.status && merged.status.length > 0) {
-        currentParams.set('status', merged.status.join(','));
-      } else {
-        currentParams.delete('status');
-      }
-
-      // اولویت
-      if (merged.priority && merged.priority !== 'all') {
-        currentParams.set('priority', merged.priority);
-      } else {
-        currentParams.delete('priority');
-      }
-
-      // بازه زمانی
-      if (merged.dateRange && merged.dateRange !== 'all') {
-        currentParams.set('date', merged.dateRange);
-      } else {
-        currentParams.delete('date');
-      }
-
-      // مرتب‌سازی
-      if (merged.sortBy && merged.sortOrder) {
-        currentParams.set(
-          'sort',
-          `${merged.sortBy}-${merged.sortOrder}`
-        );
-      }
-
-      router.push(`?${currentParams.toString()}`, { scroll: false });
+      router.push(`?${params.toString()}`, { scroll: false });
     },
-    [filters, router]
+    [filters, router],
   );
 
   const resetFilters = useCallback(() => {
