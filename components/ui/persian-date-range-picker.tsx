@@ -46,7 +46,6 @@ function jToG(jy: number, jm: number, jd: number) {
 function jMonthLen(jy: number, jm: number) {
   if (jm <= 6) return 31;
   if (jm <= 11) return 30;
-  // Esfand: leap if divisible by certain pattern
   return isJLeap(jy) ? 30 : 29;
 }
 
@@ -56,10 +55,9 @@ function isJLeap(jy: number) {
 }
 
 function firstDow(jy: number, jm: number) {
-  // Day of week for 1st of Jalali month. Persian week: Sat=0 … Fri=6
   const { gy, gm, gd } = jToG(jy, jm, 1);
-  const d = new Date(gy, gm - 1, gd).getDay(); // 0=Sun
-  return (d + 1) % 7; // Sat→0, Sun→1 … Fri→6
+  const d = new Date(gy, gm - 1, gd).getDay(); 
+  return (d + 1) % 7; // شنبه=0 تا جمعه=6
 }
 
 function todayJ() {
@@ -79,6 +77,11 @@ function jToIso(jy: number, jm: number, jd: number) {
 
 function cmpJ(ay: number, am: number, ad: number, by: number, bm: number, bd: number) {
   return ay !== by ? ay - by : am !== bm ? am - bm : ad - bd;
+}
+
+// برای تبدیل مطمئن اعداد انگلیسی به فارسی بدون باگ سیستم‌عامل
+function toFaDigit(num: number | string) {
+  return String(num).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)]);
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -105,7 +108,7 @@ const MonthGrid = React.memo(({ jy, jm, from, to, hovered, onDay, onHover, today
   const fdow = firstDow(jy, jm);
   const len  = jMonthLen(jy, jm);
 
-  // Effective range for hover preview
+  // منطق اصلاح شده پیش‌نمایش هاور (Hover Preview)
   let effFrom = from, effTo = to;
   if (from && !to && hovered) {
     const c = cmpJ(hovered.jy, hovered.jm, hovered.jd, from.jy, from.jm, from.jd);
@@ -114,7 +117,7 @@ const MonthGrid = React.memo(({ jy, jm, from, to, hovered, onDay, onHover, today
   }
 
   return (
-    <div className="min-w-[200px]">
+    <div className="min-w-[220px]">
       <div className="grid grid-cols-7 mb-1">
         {DAYS.map(d => (
           <div key={d} className="text-center text-xs font-medium text-slate-400 dark:text-slate-500 py-1">{d}</div>
@@ -128,25 +131,27 @@ const MonthGrid = React.memo(({ jy, jm, from, to, hovered, onDay, onHover, today
           const isFrom    = from ? cmpJ(jy, jm, day, from.jy, from.jm, from.jd) === 0 : false;
           const isTo      = to   ? cmpJ(jy, jm, day, to.jy,   to.jm,   to.jd)   === 0 : false;
           const isToday   = cmpJ(jy, jm, day, today.jy, today.jm, today.jd) === 0;
+          
           const inRange   = effFrom && effTo
             ? cmpJ(jy, jm, day, effFrom.jy, effFrom.jm, effFrom.jd) > 0 &&
               cmpJ(jy, jm, day, effTo.jy,   effTo.jm,   effTo.jd)   < 0
             : false;
           const isSel = isFrom || isTo;
 
-          // Range background strip
           let strip = '';
           if (inRange || (isFrom && effTo) || (isTo && effFrom)) {
-            strip = 'bg-blue-50 dark:bg-blue-950/30';
+            strip = 'bg-blue-50 dark:bg-blue-950/40';
           }
-          let roundLeft  = isTo   ? 'rounded-l-full' : '';
-          let roundRight = isFrom ? 'rounded-r-full' : '';
 
-          let inner = 'w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium cursor-pointer transition-colors ';
+          // اصلاح کلاس‌های گوشه گرد بر اساس ساختار RTL (شروع از راست)
+          let roundRight = isFrom ? 'rounded-r-full' : '';
+          let roundLeft  = isTo   ? 'rounded-l-full' : '';
+
+          let inner = 'w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium cursor-pointer transition-all ';
           if (isSel) {
             inner += 'bg-blue-600 text-white shadow';
           } else if (isToday) {
-            inner += 'ring-2 ring-blue-400 ring-offset-1 dark:ring-offset-slate-900 text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800';
+            inner += 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-slate-900 text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800';
           } else {
             inner += 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800';
           }
@@ -163,7 +168,7 @@ const MonthGrid = React.memo(({ jy, jm, from, to, hovered, onDay, onHover, today
                 aria-label={`${jy}/${jm}/${day}`}
                 aria-pressed={isSel}
               >
-                {day.toLocaleString('fa-IR')}
+                {toFaDigit(day)}
               </span>
             </div>
           );
@@ -192,31 +197,32 @@ const PersianRangePicker = ({ value, onChange, onClose }: CalendarProps) => {
   const m2y = vm === 12 ? vy + 1 : vy;
   const m2m = vm === 12 ? 1 : vm + 1;
 
-  const prev = () => vm === 1 ? (setVy(y => y-1), setVm(12)) : setVm(m => m-1);
-  const next = () => vm === 12 ? (setVy(y => y+1), setVm(1)) : setVm(m => m+1);
+  // توابع کنترل دکمه‌ها اصلاح شد تا در RTL جهت دکمه‌ها درست عمل کند
+  const prevMonth = () => vm === 1 ? (setVy(y => y-1), setVm(12)) : setVm(m => m-1);
+  const nextMonth = () => vm === 12 ? (setVy(y => y+1), setVm(1)) : setVm(m => m+1);
 
+  // اصلاح منطق کلیک برای مدیریت صحیح بازه انتخاب شده
   const onDay = useCallback((j: JD) => {
     if (!from || (from && to)) {
       onChange({ from: jToIso(j.jy, j.jm, j.jd), to: undefined });
     } else {
       const c = cmpJ(j.jy, j.jm, j.jd, from.jy, from.jm, from.jd);
-      if (c === 0) { onChange({ from: undefined, to: undefined }); }
-      else if (c > 0) { onChange({ from: jToIso(from.jy, from.jm, from.jd), to: jToIso(j.jy, j.jm, j.jd) }); }
-      else { onChange({ from: jToIso(j.jy, j.jm, j.jd), to: jToIso(from.jy, from.jm, from.jd) }); }
+      if (c === 0) { 
+        onChange({ from: undefined, to: undefined }); 
+      } else if (c > 0) { 
+        onChange({ from: jToIso(from.jy, from.jm, from.jd), to: jToIso(j.jy, j.jm, j.jd) }); 
+      } else { 
+        // اگر کاربر روزی قبل از روز شروع انتخاب کرد، آن را به عنوان تاریخ شروع جدید در نظر می‌گیریم
+        onChange({ from: jToIso(j.jy, j.jm, j.jd), to: undefined }); 
+      }
     }
   }, [from, to, onChange]);
 
   const fmtJ = (iso: string | undefined) => {
     if (!iso) return null;
     const j = isoToJ(iso);
-    return `${j.jy}/${String(j.jm).padStart(2,'0')}/${String(j.jd).padStart(2,'0')}`;
+    return `${toFaDigit(j.jy)}/${toFaDigit(String(j.jm).padStart(2,'0'))}/${toFaDigit(String(j.jd).padStart(2,'0'))}`;
   };
-
-  const presets = [
-    { label: '۷ روز اخیر',  days: 7  },
-    { label: '۳۰ روز اخیر', days: 30 },
-    { label: '۹۰ روز اخیر', days: 90 },
-  ];
 
   const applyPreset = (days: number) => {
     const now = new Date();
@@ -228,60 +234,58 @@ const PersianRangePicker = ({ value, onChange, onClose }: CalendarProps) => {
 
   return (
     <div
-      className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-5 w-max"
+      className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-5 w-max select-none z-50"
       onMouseLeave={() => setHov(null)}
       dir="rtl"
     >
-      {/* Selected range display */}
+      {/* Header text info */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2 text-sm">
-          <span className={`px-2.5 py-1 rounded-lg border font-mono text-sm transition-colors ${value.from ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+          <span className={`px-2.5 py-1 rounded-lg border font-medium text-sm transition-colors ${value.from ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 text-slate-400'}`}>
             {fmtJ(value.from) ?? 'از تاریخ'}
           </span>
-          <svg className="h-4 w-4 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-          </svg>
-          <span className={`px-2.5 py-1 rounded-lg border font-mono text-sm transition-colors ${value.to ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+          <span className="text-slate-400 text-xs">تا</span>
+          <span className={`px-2.5 py-1 rounded-lg border font-medium text-sm transition-colors ${value.to ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 text-slate-400'}`}>
             {fmtJ(value.to) ?? 'تا تاریخ'}
           </span>
         </div>
-        <button onClick={onClose} className="mr-3 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      {/* Month navigation */}
+      {/* Month navigation controls */}
       <div className="flex items-center justify-between mb-4">
-        <button onClick={next} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" aria-label="ماه بعد">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+        <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" aria-label="ماه قبل">
+          <svg className="h-4 w-4 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
         </button>
-        <div className="flex gap-10 text-sm font-semibold text-slate-700 dark:text-slate-200">
-          <span>{MONTHS[vm-1]} {vy.toLocaleString('fa-IR')}</span>
-          <span>{MONTHS[m2m-1]} {m2y.toLocaleString('fa-IR')}</span>
+        <div className="flex gap-14 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <span className="w-24 text-center">{MONTHS[vm-1]} {toFaDigit(vy)}</span>
+          <span className="w-24 text-center">{MONTHS[m2m-1]} {toFaDigit(m2y)}</span>
         </div>
-        <button onClick={prev} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" aria-label="ماه قبل">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+        <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" aria-label="ماه بعد">
+          <svg className="h-4 w-4 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
         </button>
       </div>
 
-      {/* Two-month grid */}
+      {/* Two-month grid layout */}
       <div className="flex gap-6">
         <MonthGrid jy={vy} jm={vm} from={from} to={to} hovered={hov} onDay={onDay} onHover={setHov} today={today}/>
         <div className="w-px bg-slate-100 dark:bg-slate-800 self-stretch"/>
         <MonthGrid jy={m2y} jm={m2m} from={from} to={to} hovered={hov} onDay={onDay} onHover={setHov} today={today}/>
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-        <div className="flex gap-1.5 flex-wrap">
-          {presets.map(({ label, days }) => (
+      {/* Action Footer */}
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 gap-4">
+        <div className="flex gap-1.5 flex-wrap max-w-xs">
+          {[7, 30, 90].map(days => (
             <button key={days} onClick={() => applyPreset(days)}
-              className="text-xs px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-              {label}
+              className="text-[11px] px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+              {toFaDigit(days)} روز اخیر
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button onClick={() => onChange({ from: undefined, to: undefined })}
             className="text-xs px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
             پاک کردن
@@ -297,8 +301,6 @@ const PersianRangePicker = ({ value, onChange, onClose }: CalendarProps) => {
 };
 
 // ─── Trigger / wrapper ────────────────────────────────────────────────────────
-
-export interface DateRange2 { from: string | undefined; to: string | undefined; }
 
 interface PickerProps { value: DateRange; onChange: (r: DateRange) => void; }
 
@@ -318,7 +320,7 @@ export const PersianDateRangePicker = ({ value, onChange }: PickerProps) => {
   const fmtDisplay = () => {
     const fmt = (iso: string) => {
       const j = isoToJ(iso);
-      return `${j.jy}/${String(j.jm).padStart(2,'0')}/${String(j.jd).padStart(2,'0')}`;
+      return `${toFaDigit(j.jy)}/${toFaDigit(String(j.jm).padStart(2,'0'))}/${toFaDigit(String(j.jd).padStart(2,'0'))}`;
     };
     if (value.from && value.to) return `${fmt(value.from)}  —  ${fmt(value.to)}`;
     if (value.from) return `از ${fmt(value.from)}`;
@@ -328,23 +330,23 @@ export const PersianDateRangePicker = ({ value, onChange }: PickerProps) => {
   const has = !!(value.from || value.to);
 
   return (
-    <div ref={ref} className="relative" dir="rtl">
+    <div ref={ref} className="relative inline-block" dir="rtl">
       <button
         onClick={() => setOpen(v => !v)}
-        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all cursor-pointer whitespace-nowrap
+        className={`inline-flex items-center gap-3 rounded-lg border px-3 py-2 text-sm transition-all cursor-pointer whitespace-nowrap
           ${open ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-slate-900 ' : ''}
           ${has
             ? 'border-blue-400 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
             : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
           }`}
       >
-        <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="h-4 w-4 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
           <line x1="16" y1="2" x2="16" y2="6" strokeLinecap="round"/>
           <line x1="8" y1="2" x2="8" y2="6" strokeLinecap="round"/>
           <line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
-        <span className="max-w-[260px] truncate">{fmtDisplay()}</span>
+        <span className="max-w-[260px] truncate font-medium">{fmtDisplay()}</span>
         {has && (
           <span
             role="button" tabIndex={0}
@@ -361,7 +363,7 @@ export const PersianDateRangePicker = ({ value, onChange }: PickerProps) => {
       </button>
 
       {open && (
-        <div className="absolute top-full mt-2 z-[60] right-0">
+        <div className="absolute top-full mt-2 z-[60] right-0 shadow-xl">
           <PersianRangePicker value={value} onChange={onChange} onClose={() => setOpen(false)}/>
         </div>
       )}
