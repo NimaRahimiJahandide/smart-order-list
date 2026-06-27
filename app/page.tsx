@@ -28,7 +28,7 @@ export default function OrdersManagementDashboardPage() {
   const [payload, setPayload] = useState<PaginatedResult<Order> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // debounce برای سرچ (300ms) و برای بقیه فیلترها (150ms)
   const debouncedSearch = useDebounce(filters.search, 300);
@@ -49,7 +49,7 @@ export default function OrdersManagementDashboardPage() {
     }
     abortRef.current = new AbortController();
 
-    setIsLoading(true);
+    setIsLoading(false);
     setError(null);
 
     const processingFilters = {
