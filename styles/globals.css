@@ -1,29 +1,11 @@
 @import "tailwindcss";
 
-/* =========================
-   Theme Variables (Light)
-   ========================= */
+/* Tailwind v4: enable class-based dark mode */
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-/* =========================
-   Theme Variables (Dark)
-   ========================= */
-.dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-}
-
-/* =========================
-   Tailwind Theme Bridge
-   ========================= */
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -33,9 +15,11 @@
   }
 }
 
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
 body {
-  direction: rtl;
-  background: var(--background);
-  color: var(--foreground);
   transition: background-color 0.2s ease, color 0.2s ease;
 }

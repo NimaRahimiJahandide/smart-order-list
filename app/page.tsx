@@ -9,6 +9,7 @@ import { DashboardStats } from '@/features/orders/components/dashboard-stats';
 import { OrderFiltersComponent } from '@/features/orders/components/order-filters';
 import { OrdersTable } from '@/features/orders/components/orders-table';
 import { OrderDetailsModal } from '@/features/orders/components/order-details-modal';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const EMPTY_STATS: OrderStats = {
   total: 0, pending: 0, paid: 0, shipped: 0, delivered: 0, cancelled: 0,
@@ -79,7 +80,6 @@ export default function OrdersPage() {
     debouncedPage,
   ]);
 
-  // ✅ Fix: stable retry callback — doesn't need filters in deps
   const handleRetry = useCallback(() => {
     setError(null);
     setIsLoading(true);
@@ -92,12 +92,8 @@ export default function OrdersPage() {
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             مدیریت سفارشات
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {payload && !isLoading
-              ? `${payload.totalCount} سفارش یافت شد`
-              : 'در حال بارگذاری...'}
-          </p>
         </div>
+        {/* <ThemeToggle /> */}
       </header>
 
       <DashboardStats
