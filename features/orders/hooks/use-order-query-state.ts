@@ -12,7 +12,7 @@ import { ORDER_STATUSES, ORDER_PRIORITIES } from '@/constants/orders';
 
 const VALID_SORT_FIELDS  = ['createdAt', 'totalAmount'] as const;
 const VALID_SORT_ORDERS  = ['asc', 'desc'] as const;
-const VALID_DATE_RANGES  = ['7', '30', 'all'] as const;
+const VALID_DATE_RANGES  = ['7', '30', 'all', 'custom'] as const;
 
 type SortField = (typeof VALID_SORT_FIELDS)[number];
 type SortOrder = (typeof VALID_SORT_ORDERS)[number];
@@ -42,6 +42,8 @@ export function useOrderQueryState() {
     const statusRaw = searchParams.get('status');
     const dateRaw   = (searchParams.get('date') ?? 'all') as DateFilterOption;
     const prioRaw   = (searchParams.get('priority') ?? 'all') as OrderPriority | 'all';
+    const dateFrom  = searchParams.get('dateFrom') ?? undefined;
+    const dateTo    = searchParams.get('dateTo') ?? undefined;
 
     const status: OrderStatus[] = statusRaw
       ? (statusRaw.split(',').filter((s) =>
@@ -64,6 +66,8 @@ export function useOrderQueryState() {
       status,
       priority,
       dateRange,
+      customDateFrom: dateRange === 'custom' ? dateFrom : undefined,
+      customDateTo:   dateRange === 'custom' ? dateTo   : undefined,
       sortBy:    parseSortField(sortRaw),
       sortOrder: parseSortOrder(sortRaw),
     };
@@ -86,6 +90,10 @@ export function useOrderQueryState() {
       if (merged.status.length > 0)   params.set('status', merged.status.join(','));
       if (merged.priority !== 'all')  params.set('priority', merged.priority);
       if (merged.dateRange !== 'all') params.set('date', merged.dateRange);
+      if (merged.dateRange === 'custom') {
+        if (merged.customDateFrom) params.set('dateFrom', merged.customDateFrom);
+        if (merged.customDateTo)   params.set('dateTo',   merged.customDateTo);
+      }
 
       params.set('sort', `${merged.sortBy}-${merged.sortOrder}`);
 

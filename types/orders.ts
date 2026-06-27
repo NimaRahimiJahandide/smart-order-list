@@ -1,6 +1,6 @@
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
 export type OrderPriority = 'low' | 'medium' | 'high';
-export type DateFilterOption = '7' | '30' | 'all';
+export type DateFilterOption = '7' | '30' | 'all' | 'custom';
 
 export interface Order {
   id: string;
@@ -30,6 +30,8 @@ export interface OrderFilters {
   status: OrderStatus[];
   priority: OrderPriority | 'all';
   dateRange: DateFilterOption;
+  customDateFrom?: string; // ISO date string YYYY-MM-DD
+  customDateTo?: string;   // ISO date string YYYY-MM-DD
   sortBy: 'createdAt' | 'totalAmount';
   sortOrder: 'asc' | 'desc';
 }

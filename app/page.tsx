@@ -93,7 +93,7 @@ export default function OrdersPage() {
             مدیریت سفارشات
           </h1>
         </div>
-        {/* <ThemeToggle /> */}
+        <ThemeToggle />
       </header>
 
       <DashboardStats

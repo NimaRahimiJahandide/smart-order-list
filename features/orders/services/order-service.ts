@@ -23,13 +23,24 @@ export async function fetchOrders(
   let source = [...getMockOrdersCollection()];
 
   // 1. Date range filter
-  if (filters.dateRange !== 'all') {
+  if (filters.dateRange === 'custom') {
+    if (filters.customDateFrom) {
+      const from = new Date(filters.customDateFrom);
+      from.setHours(0, 0, 0, 0);
+      source = source.filter((o) => new Date(o.createdAt) >= from);
+    }
+    if (filters.customDateTo) {
+      const to = new Date(filters.customDateTo);
+      to.setHours(23, 59, 59, 999);
+      source = source.filter((o) => new Date(o.createdAt) <= to);
+    }
+  } else if (filters.dateRange !== 'all') {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - parseInt(filters.dateRange, 10));
     source = source.filter((o) => new Date(o.createdAt) >= cutoff);
   }
 
-  // 2. Free-text search (id, customerName, email)
+  // 2. Free-text search
   if (filters.search.trim()) {
     const query = filters.search.toLowerCase().trim();
     source = source.filter(

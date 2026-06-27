@@ -5,11 +5,11 @@ import {
   OrderFilters,
   OrderStatus,
   OrderPriority,
-  DateFilterOption,
   Order,
 } from "@/types/orders";
 import { ORDER_STATUSES, ORDER_PRIORITIES } from "@/constants/orders";
 import { exportOrdersToCSV } from "../utils/csv-exporter";
+import { PersianDateRangePicker, DateRange } from "@/components/ui/persian-date-range-picker";
 
 interface FilterProps {
   filters: OrderFilters;
@@ -24,14 +24,10 @@ interface FilterProps {
 
 const LABELS = {
   search: "جستجو بر اساس نام مشتری یا ایمیل...",
-  dateRange: "بازه زمانی",
   priority: "اولویت",
   exportCSV: "خروجی CSV",
   reset: "ریست فیلترها",
   statuses: "وضعیت‌ها",
-  allTime: "کل زمان",
-  last7: "۷ روز اخیر",
-  last30: "۳۰ روز اخیر",
   allPriorities: "همه اولویت‌ها",
 } as const;
 
@@ -59,9 +55,27 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
       const nextStatus = isSelected
         ? prev.status.filter((s) => s !== status)
         : [...prev.status, status];
-
       return { status: nextStatus, page: 1 };
     });
+  };
+
+  // Date range from the Persian picker
+  const dateRangeValue: DateRange = {
+    from: filters.dateRange === 'custom' ? filters.customDateFrom : undefined,
+    to:   filters.dateRange === 'custom' ? filters.customDateTo   : undefined,
+  };
+
+  const handleDateChange = (range: DateRange) => {
+    if (!range.from && !range.to) {
+      onFilterChange({ dateRange: 'all', customDateFrom: undefined, customDateTo: undefined, page: 1 });
+    } else {
+      onFilterChange({
+        dateRange: 'custom',
+        customDateFrom: range.from,
+        customDateTo: range.to,
+        page: 1,
+      });
+    }
   };
 
   return (
@@ -71,20 +85,14 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
         <div className="relative flex-1 max-w-md">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            width="24" height="24" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
             className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
           >
             <path d="m21 21-4.34-4.34" />
             <circle cx="11" cy="11" r="8" />
           </svg>
-
           <input
             type="text"
             placeholder={LABELS.search}
@@ -97,28 +105,13 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={filters.dateRange}
-            onChange={(e) =>
-              onFilterChange({
-                dateRange: e.target.value as DateFilterOption,
-                page: 1,
-              })
-            }
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 cursor-pointer"
-            aria-label="فیلتر بازه زمانی"
-          >
-            <option value="all" className="cursor-pointer">
-              {LABELS.allTime}
-            </option>
-            <option value="7" className="cursor-pointer">
-              {LABELS.last7}
-            </option>
-            <option value="30" className="cursor-pointer">
-              {LABELS.last30}
-            </option>
-          </select>
+          {/* ── Persian Calendar Range Picker ── */}
+          <PersianDateRangePicker
+            value={dateRangeValue}
+            onChange={handleDateChange}
+          />
 
+          {/* Priority */}
           <select
             value={filters.priority}
             onChange={(e) =>
@@ -130,33 +123,23 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 cursor-pointer"
             aria-label="فیلتر اولویت"
           >
-            <option value="all" className="cursor-pointer">
-              {LABELS.allPriorities}
-            </option>
+            <option value="all">{LABELS.allPriorities}</option>
             {ORDER_PRIORITIES.map((p) => (
               <option key={p} value={p}>
-                {p.toUpperCase()}
+                {p === 'low' ? 'کم' : p === 'medium' ? 'متوسط' : 'زیاد'}
               </option>
             ))}
           </select>
 
+          {/* CSV Export */}
           <button
             onClick={() => exportOrdersToCSV(allFilteredOrders)}
             disabled={allFilteredOrders.length === 0}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className="h-4 w-4">
               <path d="M12 15V3" />
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <path d="m7 10 5 5 5-5" />
@@ -164,23 +147,16 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
             {LABELS.exportCSV}
           </button>
 
+          {/* Reset */}
           <button
             onClick={onReset}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer"
             title={LABELS.reset}
+            aria-label={LABELS.reset}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className="h-4 w-4">
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
               <path d="M3 3v5h5" />
             </svg>
@@ -193,10 +169,8 @@ export const OrderFiltersComponent: React.FC<FilterProps> = ({
         <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-2">
           {LABELS.statuses}:
         </span>
-
         {ORDER_STATUSES.map((status) => {
           const isActive = filters.status.includes(status);
-
           return (
             <button
               key={status}
