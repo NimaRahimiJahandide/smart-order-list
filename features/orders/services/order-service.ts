@@ -29,11 +29,12 @@ export async function fetchOrders(
     source = source.filter((o) => new Date(o.createdAt) >= cutoff);
   }
 
-  // 2. Free-text search
+  // 2. Free-text search (id, customerName, email)
   if (filters.search.trim()) {
     const query = filters.search.toLowerCase().trim();
     source = source.filter(
       (o) =>
+        o.id.toLowerCase().includes(query) ||
         o.customerName.toLowerCase().includes(query) ||
         o.email.toLowerCase().includes(query),
     );
