@@ -289,11 +289,8 @@ export const OrdersTable: React.FC<TableProps> = ({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="overflow-x-auto overflow-y-auto max-h-[50vh] scroll-smooth transition-all duration-300 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-        style={{
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-        }}
+        className="overflow-x-auto overflow-y-auto max-h-[70vh] scroll-smooth transition-all duration-300"
+        
       >
         <table className="w-full text-right border-collapse">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-10 shadow-[0_1px_0_0_rgba(226,232,240,1)] dark:shadow-[0_1px_0_0_rgba(51,65,85,1)]">
