@@ -1,40 +1,30 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 export function useScrollShrink() {
   const [shrunk, setShrunk] = useState(false);
-  
-  // نگهداری آخرین مقدار اسکرول برای تشخیص جهت حرکت
-  const lastScrollTop = useRef(0);
+  const lastY = useRef(0);
 
   useEffect(() => {
-    const handleScroll = () => {
-      // دریافت مقدار اسکرول فعلی (پشتیبانی از مرورگرهای مختلف)
-      const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
+    const onScroll = () => {
+      const y = window.scrollY;
 
-      // ۱. اگر کاربر به سمت پایین اسکرول کند
-      if (currentScrollTop > lastScrollTop.current) {
-        // برای اینکه در همان ابتدای صفحه (مثلاً اسکرول کمتر از ۱۰ پیکسل) هدر فوراً غیب نشود
-        if (currentScrollTop > 10) {
-          setShrunk(true);
-        }
+      // ۱. اگر کاربر به سمت پایین حرکت کرد و از مرز ۱۰ پیکسل رد شد -> هدر کوچک شود
+      if (y > lastY.current && y > 10) {
+        setShrunk(true);
       } 
-      // ۲. اگر کاربر به سمت بالا اسکرول کند
-      else if (currentScrollTop < lastScrollTop.current) {
+      // ۲. هدر فقط و فقط زمانی به حالت بزرگ برمی‌گردد که کاربر کاملاً به بالای صفحه (کمتر از ۵ پیکسل) رسیده باشد
+      else if (y <= 5) {
         setShrunk(false);
       }
 
-      // بروزرسانی مقدار قبلی برای مقایسه در دفعات بعد
-      // استفاده از Math.max برای جلوگیری از مقادیر منفی در اسکرول‌های کشسانی (Elastic Scroll در مک و آیفون)
-      lastScrollTop.current = Math.max(0, currentScrollTop);
+      lastY.current = y;
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
+    // اضافه کردن passive برای پرفورمنس بهتر و جلوگیری از لگ اسکرول
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return shrunk;

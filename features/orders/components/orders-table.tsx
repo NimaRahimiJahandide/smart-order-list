@@ -27,7 +27,16 @@ interface TableProps {
 
 /* ── Icons ──────────────────────────────────────────────────────────────── */
 const ArrowUpDownIcon = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="m21 16-4 4-4-4" />
     <path d="M17 20V4" />
     <path d="m3 8 4-4 4 4" />
@@ -35,17 +44,44 @@ const ArrowUpDownIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 const ArrowUpIcon = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="m18 15-6-6-6 6" />
   </svg>
 );
 const ArrowDownIcon = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="m6 9 6 6 6-6" />
   </svg>
 );
 const EyeIcon = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z" />
     <circle cx="12" cy="12" r="3" />
   </svg>
@@ -139,7 +175,9 @@ export const OrdersTable: React.FC<TableProps> = ({
 
   const toggleSort = (field: SortableField) => {
     if (filters.sortBy === field) {
-      onFilterChange({ sortOrder: filters.sortOrder === "asc" ? "desc" : "asc" });
+      onFilterChange({
+        sortOrder: filters.sortOrder === "asc" ? "desc" : "asc",
+      });
     } else {
       onFilterChange({ sortBy: field, sortOrder: "desc" });
     }
@@ -164,7 +202,8 @@ export const OrdersTable: React.FC<TableProps> = ({
       <div className="flex justify-between items-center px-5 py-2.5 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500">
         <span>
           صفحات بارگذاری‌شده: {minPage.toLocaleString("fa-IR")} تا{" "}
-          {maxPage.toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")}
+          {maxPage.toLocaleString("fa-IR")} از{" "}
+          {totalPages.toLocaleString("fa-IR")}
         </span>
         <span>کل سفارشات: {totalCount.toLocaleString("fa-IR")}</span>
       </div>
@@ -172,7 +211,11 @@ export const OrdersTable: React.FC<TableProps> = ({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="overflow-x-auto overflow-y-auto max-h-[70vh] scroll-smooth"
+        className="overflow-x-auto overflow-y-auto max-h-[70vh] scroll-smooth transition-all duration-300 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
       >
         <table className="w-full text-right border-collapse">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-10 shadow-[0_1px_0_0_rgba(226,232,240,1)] dark:shadow-[0_1px_0_0_rgba(51,65,85,1)]">
@@ -187,7 +230,9 @@ export const OrdersTable: React.FC<TableProps> = ({
                 onClick={() => toggleSort("totalAmount")}
                 aria-sort={
                   filters.sortBy === "totalAmount"
-                    ? filters.sortOrder === "asc" ? "ascending" : "descending"
+                    ? filters.sortOrder === "asc"
+                      ? "ascending"
+                      : "descending"
                     : "none"
                 }
               >
@@ -200,7 +245,9 @@ export const OrdersTable: React.FC<TableProps> = ({
                 onClick={() => toggleSort("createdAt")}
                 aria-sort={
                   filters.sortBy === "createdAt"
-                    ? filters.sortOrder === "asc" ? "ascending" : "descending"
+                    ? filters.sortOrder === "asc"
+                      ? "ascending"
+                      : "descending"
                     : "none"
                 }
               >
@@ -244,13 +291,19 @@ export const OrdersTable: React.FC<TableProps> = ({
                       <div className="text-sm font-medium text-slate-900 dark:text-white">
                         {order.customerName}
                       </div>
-                      <div className="text-xs text-slate-400">{order.email}</div>
+                      <div className="text-xs text-slate-400">
+                        {order.email}
+                      </div>
                     </td>
                     <td className="px-5 py-3.5 text-center">
-                      <Badge variant={order.status}>{ORDER_STATUS_LABELS[order.status]}</Badge>
+                      <Badge variant={order.status}>
+                        {ORDER_STATUS_LABELS[order.status]}
+                      </Badge>
                     </td>
                     <td className="px-5 py-3.5 text-center">
-                      <Badge variant={order.priority}>{ORDER_PRIORITY_LABELS[order.priority]}</Badge>
+                      <Badge variant={order.priority}>
+                        {ORDER_PRIORITY_LABELS[order.priority]}
+                      </Badge>
                     </td>
                     <td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-400 text-center">
                       {order.itemsCount}

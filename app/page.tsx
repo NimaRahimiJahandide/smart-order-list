@@ -185,7 +185,7 @@ export default function OrdersPage() {
   }, [buildQuery, minPage]);
 
   return (
-    <main className="container mx-auto max-w-7xl px-4 py-8">
+    <main className="container min-h-screen mx-auto max-w-7xl px-4 py-8">
       {/* ── Sticky shrinking header zone ────────────────────────────────── */}
       <div
         ref={stickyRef}
