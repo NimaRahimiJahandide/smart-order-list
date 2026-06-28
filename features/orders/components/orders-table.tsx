@@ -127,28 +127,11 @@ export const OrdersTable: React.FC<TableProps> = ({
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
 
-      {/* ── Top boundary ── */}
-      {!isInitial && orders.length > 0 && (
-        <div className="flex items-center justify-center py-2.5 border-b border-slate-100 dark:border-slate-800/60">
-          <span className="text-xs text-slate-400 dark:text-slate-500 select-none">
-            ✦ ابتدای لیست سفارش‌ها
-          </span>
-        </div>
-      )}
-
-      {/*
-        InfiniteScroll wraps the overflow-x container.
-        - dataLength: total accumulated rows loaded so far
-        - next: called once when user scrolls near the bottom (scrollThreshold)
-        - hasMore: false → stops observing and shows endMessage
-        - loader: loading UI shown between next() call and dataLength increase
-        - style/className: transparent so our own rounded-xl card styles apply
-      */}
       <InfiniteScroll
         dataLength={orders.length}
         next={onLoadMore}
         hasMore={hasMore}
-        loader={<LoadingBanner />}
+        loader={<p>Loading...</p>}
         endMessage={
           !isInitial && orders.length > 0 ? (
             <div className="flex items-center justify-center py-2.5 border-t border-slate-100 dark:border-slate-800/60">
@@ -247,33 +230,6 @@ export const OrdersTable: React.FC<TableProps> = ({
           </table>
         </div>
       </InfiniteScroll>
-
-      {/* ── Status bar ── */}
-      <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-5 py-3 dark:border-slate-800 dark:bg-slate-900/50">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          <span className="font-semibold text-slate-800 dark:text-white">
-            {orders.length.toLocaleString('fa-IR')}
-          </span>
-          {' از '}
-          <span className="font-semibold text-slate-800 dark:text-white">
-            {totalCount.toLocaleString('fa-IR')}
-          </span>
-          {' سفارش نمایش داده شده'}
-          {(hasMore || isFetching) && (
-            <span className="text-slate-400">
-              {' · صفحه '}{currentPage.toLocaleString('fa-IR')}{' از '}{totalPages.toLocaleString('fa-IR')}
-            </span>
-          )}
-        </p>
-        {hasMore && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-            اسکرول برای بارگذاری بیشتر
-          </div>
-        )}
-      </div>
     </div>
   );
 };
