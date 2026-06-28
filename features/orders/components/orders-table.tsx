@@ -8,15 +8,17 @@ import { Badge } from '@/components/ui/badge';
 interface TableProps {
   orders: Order[];
   totalCount: number;
+  currentPage: number;
+  totalPages: number;
   filters: OrderFilters;
   onFilterChange: (
     updater: Partial<OrderFilters> | ((prev: OrderFilters) => Partial<OrderFilters>),
   ) => void;
-  isLoading: boolean;
+  isLoadingMore: 'top' | 'bottom' | 'initial' | null;
   onSelectOrder: (order: Order) => void;
 }
 
-/* ── tiny icon components ─────────────────────────────────────── */
+/* ── icons ─────────────────────────────────────────────────────── */
 const ArrowUpDownIcon = ({ className }: { className?: string }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>
@@ -39,18 +41,66 @@ const EyeIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+/* ── Loading banner ─────────────────────────────────────────────── */
+const LoadingBanner = ({ direction }: { direction: 'top' | 'bottom' }) => (
+  <div
+    className={`flex items-center justify-center gap-3 py-5 px-6
+      bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50
+      dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-blue-950/40
+      ${direction === 'top' ? 'border-b' : 'border-t'}
+      border-blue-200 dark:border-blue-900/50`}
+    role="status"
+    aria-live="polite"
+  >
+    {/* Animated dots */}
+    <div className="flex items-center gap-1.5">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-2.5 w-2.5 rounded-full bg-blue-500 dark:bg-blue-400"
+          style={{ animation: `bounce 0.9s ease-in-out ${i * 0.15}s infinite` }}
+        />
+      ))}
+    </div>
+    <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+      {direction === 'top' ? 'بارگذاری سفارش‌های قبلی…' : 'بارگذاری سفارش‌های بعدی…'}
+    </span>
+    <style>{`
+      @keyframes bounce {
+        0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+        40%            { transform: translateY(-6px); opacity: 1; }
+      }
+    `}</style>
+  </div>
+);
+
+/* ── Skeleton rows ──────────────────────────────────────────────── */
+const SkeletonRows = () => (
+  <>
+    {Array.from({ length: 8 }).map((_, i) => (
+      <tr key={i} aria-hidden="true">
+        {Array.from({ length: 8 }).map((_, j) => (
+          <td key={j} className="px-5 py-4">
+            <div className="h-4 w-4/5 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+          </td>
+        ))}
+      </tr>
+    ))}
+  </>
+);
+
 type SortableField = 'createdAt' | 'totalAmount';
 
 export const OrdersTable: React.FC<TableProps> = ({
   orders,
   totalCount,
+  currentPage,
+  totalPages,
   filters,
   onFilterChange,
-  isLoading,
+  isLoadingMore,
   onSelectOrder,
 }) => {
-  const totalPages = Math.max(Math.ceil(totalCount / ITEMS_PER_PAGE), 1);
-
   const toggleSort = (field: SortableField) => {
     if (filters.sortBy === field) {
       onFilterChange({ sortOrder: filters.sortOrder === 'asc' ? 'desc' : 'asc' });
@@ -67,11 +117,27 @@ export const OrdersTable: React.FC<TableProps> = ({
       : <ArrowDownIcon className="ml-1.5 h-3.5 w-3.5 text-blue-500" />;
   };
 
-  const thBase =
-    'px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400';
+  const thBase = 'px-5 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400';
+
+  const isAtTop    = currentPage <= 1;
+  const isAtBottom = currentPage >= totalPages;
+  const isInitial  = isLoadingMore === 'initial';
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+
+      {/* ── Top loading banner ── */}
+      {isLoadingMore === 'top' && <LoadingBanner direction="top" />}
+
+      {/* ── Top boundary ── */}
+      {!isLoadingMore && isAtTop && orders.length > 0 && (
+        <div className="flex items-center justify-center py-2.5 border-b border-slate-100 dark:border-slate-800/60">
+          <span className="text-xs text-slate-400 dark:text-slate-500 select-none">
+            ✦ ابتدای لیست سفارش‌ها
+          </span>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full text-right border-collapse">
           <thead>
@@ -84,11 +150,7 @@ export const OrdersTable: React.FC<TableProps> = ({
               <th
                 className={`${thBase} text-center cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200`}
                 onClick={() => toggleSort('totalAmount')}
-                aria-sort={
-                  filters.sortBy === 'totalAmount'
-                    ? filters.sortOrder === 'asc' ? 'ascending' : 'descending'
-                    : 'none'
-                }
+                aria-sort={filters.sortBy === 'totalAmount' ? (filters.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
                 <div className="inline-flex items-center justify-center">
                   مبلغ کل <SortIcon field="totalAmount" />
@@ -97,11 +159,7 @@ export const OrdersTable: React.FC<TableProps> = ({
               <th
                 className={`${thBase} text-center cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200`}
                 onClick={() => toggleSort('createdAt')}
-                aria-sort={
-                  filters.sortBy === 'createdAt'
-                    ? filters.sortOrder === 'asc' ? 'ascending' : 'descending'
-                    : 'none'
-                }
+                aria-sort={filters.sortBy === 'createdAt' ? (filters.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
                 <div className="inline-flex items-center justify-center">
                   تاریخ ایجاد <SortIcon field="createdAt" />
@@ -112,25 +170,13 @@ export const OrdersTable: React.FC<TableProps> = ({
           </thead>
 
           <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-            {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i} aria-hidden="true">
-                  {Array.from({ length: 8 }).map((_, j) => (
-                    <td key={j} className="px-5 py-4">
-                      <div className="h-4 w-4/5 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-                    </td>
-                  ))}
-                </tr>
-              ))
+            {isInitial ? (
+              <SkeletonRows />
             ) : orders.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-5 py-16 text-center">
-                  <p className="text-base font-medium text-slate-700 dark:text-slate-300">
-                    هیچ سفارشی یافت نشد
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    پارامترهای جستجو یا فیلترها را گسترش دهید.
-                  </p>
+                  <p className="text-base font-medium text-slate-700 dark:text-slate-300">هیچ سفارشی یافت نشد</p>
+                  <p className="mt-1 text-sm text-slate-400">پارامترهای جستجو یا فیلترها را گسترش دهید.</p>
                 </td>
               </tr>
             ) : (
@@ -144,22 +190,14 @@ export const OrdersTable: React.FC<TableProps> = ({
                     {order.id}
                   </td>
                   <td className="px-5 py-3.5 text-center">
-                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                      {order.customerName}
-                    </div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">{order.customerName}</div>
                     <div className="text-xs text-slate-400">{order.email}</div>
                   </td>
                   <td className="px-5 py-3.5 text-center">
-                    {/* ✅ Fix: use Persian label, not raw enum */}
-                    <Badge variant={order.status}>
-                      {ORDER_STATUS_LABELS[order.status]}
-                    </Badge>
+                    <Badge variant={order.status}>{ORDER_STATUS_LABELS[order.status]}</Badge>
                   </td>
                   <td className="px-5 py-3.5 text-center">
-                    {/* ✅ Fix: use Persian label, not raw enum */}
-                    <Badge variant={order.priority}>
-                      {ORDER_PRIORITY_LABELS[order.priority]}
-                    </Badge>
+                    <Badge variant={order.priority}>{ORDER_PRIORITY_LABELS[order.priority]}</Badge>
                   </td>
                   <td className="px-5 py-3.5 text-sm text-slate-600 dark:text-slate-400 text-center">
                     {order.itemsCount}
@@ -170,10 +208,7 @@ export const OrdersTable: React.FC<TableProps> = ({
                   <td className="px-5 py-3.5 text-sm text-slate-500 dark:text-slate-400 text-center">
                     {new Date(order.createdAt).toLocaleDateString('fa-IR')}
                   </td>
-                  <td
-                    className="px-5 py-3.5 text-left text-sm font-medium"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <td className="px-5 py-3.5 text-left text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => onSelectOrder(order)}
                       className="rounded-lg p-1.5 text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
@@ -189,36 +224,34 @@ export const OrdersTable: React.FC<TableProps> = ({
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between border-t border-slate-200 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900">
+      {/* ── Bottom loading banner ── */}
+      {isLoadingMore === 'bottom' && <LoadingBanner direction="bottom" />}
+
+      {/* ── Bottom boundary ── */}
+      {!isLoadingMore && isAtBottom && orders.length > 0 && (
+        <div className="flex items-center justify-center py-2.5 border-t border-slate-100 dark:border-slate-800/60">
+          <span className="text-xs text-slate-400 dark:text-slate-500 select-none">
+            ✦ پایان لیست · {totalCount.toLocaleString('fa-IR')} سفارش
+          </span>
+        </div>
+      )}
+
+      {/* ── Status bar ── */}
+      <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-5 py-3 dark:border-slate-800 dark:bg-slate-900/50">
         <p className="text-sm text-slate-500 dark:text-slate-400">
           صفحه{' '}
-          <span className="font-semibold text-slate-800 dark:text-white">{filters.page}</span>
+          <span className="font-semibold text-slate-800 dark:text-white">{currentPage.toLocaleString('fa-IR')}</span>
           {' '}از{' '}
-          <span className="font-semibold text-slate-800 dark:text-white">{totalPages}</span>
-          {' '}
-          <span className="text-slate-400">({totalCount} سفارش)</span>
+          <span className="font-semibold text-slate-800 dark:text-white">{totalPages.toLocaleString('fa-IR')}</span>
+          {' · '}
+          <span className="text-slate-400">{totalCount.toLocaleString('fa-IR')} سفارش</span>
         </p>
-
-        <nav className="flex items-center gap-1" aria-label="صفحه‌بندی">
-          {[
-            { label: '«', page: 1,                         disabled: filters.page === 1,         title: 'صفحه اول' },
-            { label: '‹', page: filters.page - 1,          disabled: filters.page === 1,         title: 'صفحه قبل' },
-            { label: '›', page: filters.page + 1,          disabled: filters.page === totalPages, title: 'صفحه بعد' },
-            { label: '»', page: totalPages,                 disabled: filters.page === totalPages, title: 'صفحه آخر' },
-          ].map(({ label, page, disabled, title }) => (
-            <button
-              key={title}
-              onClick={() => onFilterChange({ page })}
-              disabled={disabled || isLoading}
-              aria-label={title}
-              title={title}
-              className="min-w-[2rem] rounded-md border border-slate-200 px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 cursor-pointer transition-colors"
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4" />
+          </svg>
+          اسکرول برای بارگذاری بیشتر
+        </div>
       </div>
     </div>
   );

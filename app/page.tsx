@@ -10,80 +10,144 @@ import { OrderFiltersComponent } from '@/features/orders/components/order-filter
 import { OrdersTable } from '@/features/orders/components/orders-table';
 import { OrderDetailsModal } from '@/features/orders/components/order-details-modal';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { ITEMS_PER_PAGE } from '@/constants/orders';
 
 const EMPTY_STATS: OrderStats = {
   total: 0, pending: 0, paid: 0, shipped: 0, delivered: 0, cancelled: 0,
 };
 
+// How many px from the top/bottom edge of the page to trigger load
+const SCROLL_THRESHOLD = 250;
+
 export default function OrdersPage() {
   const { filters, setFilters, resetFilters } = useOrderQueryState();
 
-  const [payload, setPayload]           = useState<PaginatedResult<Order> | null>(null);
-  const [error, setError]               = useState<string | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isLoading, setIsLoading]       = useState(false);
+  const [currentPage, setCurrentPage]         = useState(filters.page);
+  const [payload, setPayload]                 = useState<PaginatedResult | null>(null);
+  const [error, setError]                     = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder]     = useState<Order | null>(null);
+  const [isLoadingMore, setIsLoadingMore]     = useState<'top' | 'bottom' | 'initial' | null>('initial');
 
-  // Debounce — longer delay only for free-text search
+  const abortRef        = useRef<AbortController | null>(null);
+  const loadingRef      = useRef(false);   // sync guard for scroll handler
+  const currentPageRef  = useRef(currentPage);
+  currentPageRef.current = currentPage;
+
+  // ── Debounced filter values ───────────────────────────────────────────────
   const debouncedSearch    = useDebounce(filters.search, 300);
   const debouncedStatus    = useDebounce(filters.status, 150);
   const debouncedPriority  = useDebounce(filters.priority, 150);
   const debouncedDateRange = useDebounce(filters.dateRange, 150);
   const debouncedSortBy    = useDebounce(filters.sortBy, 150);
   const debouncedSortOrder = useDebounce(filters.sortOrder, 150);
-  const debouncedPage      = useDebounce(filters.page, 150);
 
-  const abortRef = useRef<AbortController | null>(null);
+  const filterKey = JSON.stringify({
+    search:        debouncedSearch,
+    status:        debouncedStatus,
+    priority:      debouncedPriority,
+    dateRange:     debouncedDateRange,
+    sortBy:        debouncedSortBy,
+    sortOrder:     debouncedSortOrder,
+    customDateFrom: filters.customDateFrom ?? '',
+    customDateTo:   filters.customDateTo   ?? '',
+  });
 
-  useEffect(() => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  // ── Core fetch ────────────────────────────────────────────────────────────
+  const loadPage = useCallback(
+    (page: number, direction: 'top' | 'bottom' | 'initial') => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
 
-    setIsLoading(true);
-    setError(null);
+      abortRef.current?.abort();
+      const controller  = new AbortController();
+      abortRef.current  = controller;
 
-    fetchOrders(
-      {
-        ...filters,
-        search:    debouncedSearch,
-        status:    debouncedStatus,
-        priority:  debouncedPriority,
-        dateRange: debouncedDateRange,
-        sortBy:    debouncedSortBy,
-        sortOrder: debouncedSortOrder,
-        page:      debouncedPage,
-      },
-      // ✅ Fix: pass signal so network mock can be aborted properly
-      controller.signal,
-    )
-      .then((result) => {
-        if (!controller.signal.aborted) {
+      setIsLoadingMore(direction);
+      setError(null);
+
+      fetchOrders(
+        {
+          ...filters,
+          search:    debouncedSearch,
+          status:    debouncedStatus,
+          priority:  debouncedPriority,
+          dateRange: debouncedDateRange,
+          sortBy:    debouncedSortBy,
+          sortOrder: debouncedSortOrder,
+          customDateFrom: filters.customDateFrom,
+          customDateTo:   filters.customDateTo,
+          page,
+        },
+        controller.signal,
+      )
+        .then((result) => {
+          if (controller.signal.aborted) return;
           setPayload(result);
-          setIsLoading(false);
-        }
-      })
-      .catch((err: Error) => {
-        if (err.name === 'AbortError') return;
-        setError(err.message || 'خطای سیستم در هنگام دریافت داده‌ها رخ داد.');
-        setIsLoading(false);
-      });
-
-    return () => controller.abort();
+          setCurrentPage(page);
+          currentPageRef.current = page;
+          setFilters({ page });
+          setIsLoadingMore(null);
+        })
+        .catch((err: Error) => {
+          if (err.name === 'AbortError') return;
+          setError(err.message || 'خطای سیستم در هنگام دریافت داده‌ها رخ داد.');
+          setIsLoadingMore(null);
+        })
+        .finally(() => {
+          loadingRef.current = false;
+        });
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    debouncedSearch,
-    debouncedStatus,
-    debouncedPriority,
-    debouncedDateRange,
-    debouncedSortBy,
-    debouncedSortOrder,
-    debouncedPage,
-  ]);
+    [filterKey],
+  );
+
+  // ── Reset to page 1 when filters change ──────────────────────────────────
+  const prevFilterKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevFilterKey.current === null) {
+      // first render — load initial page from URL
+      prevFilterKey.current = filterKey;
+      loadPage(filters.page, 'initial');
+      return;
+    }
+    if (prevFilterKey.current === filterKey) return;
+    prevFilterKey.current = filterKey;
+    loadPage(1, 'initial');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const totalCount = payload?.totalCount ?? 0;
+  const totalPages = Math.max(Math.ceil(totalCount / ITEMS_PER_PAGE), 1);
+  const totalPagesRef = useRef(totalPages);
+  totalPagesRef.current = totalPages;
+
+  // ── Window scroll → infinite load ────────────────────────────────────────
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loadingRef.current) return;
+
+      const scrollY      = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const docHeight    = document.documentElement.scrollHeight;
+      const distFromTop    = scrollY;
+      const distFromBottom = docHeight - scrollY - windowHeight;
+
+      if (distFromBottom < SCROLL_THRESHOLD && currentPageRef.current < totalPagesRef.current) {
+        loadPage(currentPageRef.current + 1, 'bottom');
+      } else if (distFromTop < SCROLL_THRESHOLD && currentPageRef.current > 1) {
+        loadPage(currentPageRef.current - 1, 'top');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loadPage]);
 
   const handleRetry = useCallback(() => {
     setError(null);
-    setIsLoading(true);
-  }, []);
+    loadPage(currentPage, 'initial');
+  }, [currentPage, loadPage]);
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
@@ -98,7 +162,7 @@ export default function OrdersPage() {
 
       <DashboardStats
         stats={payload?.filteredStats ?? EMPTY_STATS}
-        isLoading={isLoading}
+        isLoading={isLoadingMore === 'initial'}
       />
 
       <OrderFiltersComponent
@@ -111,28 +175,16 @@ export default function OrdersPage() {
       {error ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-6 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
           <div className="flex flex-col items-center gap-3">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-8 w-8 text-rose-500"
-              aria-hidden="true"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className="h-8 w-8 text-rose-500" aria-hidden="true">
               <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
               <path d="M12 9v4" /><path d="M12 17h.01" />
             </svg>
-            <h3 className="text-base font-semibold text-rose-900 dark:text-rose-400">
-              خطای اتصال به داده‌ها
-            </h3>
+            <h3 className="text-base font-semibold text-rose-900 dark:text-rose-400">خطای اتصال به داده‌ها</h3>
             <p className="text-sm text-rose-700 dark:text-rose-300 max-w-md">{error}</p>
-            <button
-              onClick={handleRetry}
-              className="mt-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-colors"
-            >
+            <button onClick={handleRetry}
+              className="mt-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-colors">
               تلاش مجدد
             </button>
           </div>
@@ -140,10 +192,12 @@ export default function OrdersPage() {
       ) : (
         <OrdersTable
           orders={payload?.data ?? []}
-          totalCount={payload?.totalCount ?? 0}
+          totalCount={totalCount}
+          currentPage={currentPage}
+          totalPages={totalPages}
           filters={filters}
           onFilterChange={setFilters}
-          isLoading={isLoading}
+          isLoadingMore={isLoadingMore}
           onSelectOrder={setSelectedOrder}
         />
       )}

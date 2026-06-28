@@ -4,23 +4,27 @@ import { ORDER_PRIORITIES } from '../constants/orders';
 const FIRST_NAMES = [
   'John', 'Jane', 'Alex', 'Emily', 'Michael',
   'Sarah', 'David', 'Jessica', 'James', 'Elena',
+  'Ali', 'Maryam', 'Reza', 'Zahra', 'Hassan',
+  'Fateme', 'Mohammad', 'Nasrin', 'Amir', 'Leila',
+  'Chris', 'Amanda', 'Robert', 'Linda', 'Kevin',
+  'Maria', 'Daniel', 'Susan', 'Mark', 'Lisa',
 ];
 
 const LAST_NAMES = [
   'Smith', 'Doe', 'Johnson', 'Williams', 'Brown',
   'Jones', 'Miller', 'Davis', 'Garcia', 'Rodriguez',
+  'Ahmadi', 'Hosseini', 'Karimi', 'Mousavi', 'Rezaei',
+  'Mohammadi', 'Nazari', 'Moradi', 'Jafari', 'Bagheri',
+  'Wilson', 'Moore', 'Taylor', 'Anderson', 'Thomas',
+  'Jackson', 'White', 'Harris', 'Martin', 'Thompson',
 ];
 
 const DOMAINS = [
-  'gmail.com',
-  'yahoo.com',
-  'outlook.com',
-  'proton.me',
-  'corporate.com',
+  'gmail.com', 'yahoo.com', 'outlook.com',
+  'proton.me', 'corporate.com', 'icloud.com',
+  'hotmail.com', 'company.io',
 ];
 
-// Simple deterministic pseudo-random (seeded LCG) so the mock database
-// is stable across hot-reloads and SSR/client hydration.
 function createSeededRandom(seed: number) {
   let s = seed;
   return () => {
@@ -29,25 +33,25 @@ function createSeededRandom(seed: number) {
   };
 }
 
-export function generateMockOrders(count = 250): Order[] {
+export function generateMockOrders(count = 10_000): Order[] {
   const rand = createSeededRandom(42);
   const orders: Order[] = [];
   const now = new Date();
 
   for (let i = 1; i <= count; i++) {
-    const firstName = FIRST_NAMES[Math.floor(rand() * FIRST_NAMES.length)];
-    const lastName  = LAST_NAMES[Math.floor(rand() * LAST_NAMES.length)];
+    const firstName    = FIRST_NAMES[Math.floor(rand() * FIRST_NAMES.length)];
+    const lastName     = LAST_NAMES[Math.floor(rand() * LAST_NAMES.length)];
     const customerName = `${firstName} ${lastName}`;
-    const email =
-      `${firstName.toLowerCase()}.${lastName.toLowerCase()}` +
+    const email        =
+      `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Math.floor(rand() * 999)}` +
       `@${DOMAINS[Math.floor(rand() * DOMAINS.length)]}`;
 
-    const statusRand = rand();
+    const sr = rand();
     let status: OrderStatus = 'pending';
-    if      (statusRand > 0.85) status = 'cancelled';
-    else if (statusRand > 0.55) status = 'delivered';
-    else if (statusRand > 0.35) status = 'shipped';
-    else if (statusRand > 0.15) status = 'paid';
+    if      (sr > 0.85) status = 'cancelled';
+    else if (sr > 0.55) status = 'delivered';
+    else if (sr > 0.35) status = 'shipped';
+    else if (sr > 0.15) status = 'paid';
 
     const priority: OrderPriority =
       ORDER_PRIORITIES[Math.floor(rand() * ORDER_PRIORITIES.length)];
@@ -57,13 +61,14 @@ export function generateMockOrders(count = 250): Order[] {
       (itemsCount * (rand() * 45 + 5) + rand() * 15).toFixed(2),
     );
 
-    const daysAgo  = Math.floor(rand() * 45);
+    // Spread over ~2 years so date filtering is interesting
+    const daysAgo  = Math.floor(rand() * 730);
     const createdAt = new Date(
       now.getTime() - daysAgo * 24 * 60 * 60 * 1000,
     ).toISOString();
 
     orders.push({
-      id: `ORD-${2026}${String(i).padStart(4, '0')}`,
+      id: `ORD-${String(i).padStart(6, '0')}`,
       customerName,
       email,
       status,
@@ -79,12 +84,9 @@ export function generateMockOrders(count = 250): Order[] {
   );
 }
 
-// Singleton — stable across the lifetime of the JS module
-let clientSideMockDatabase: Order[] | null = null;
+let _cache: Order[] | null = null;
 
 export function getMockOrdersCollection(): Order[] {
-  if (!clientSideMockDatabase) {
-    clientSideMockDatabase = generateMockOrders(240);
-  }
-  return clientSideMockDatabase;
+  if (!_cache) _cache = generateMockOrders(10_000);
+  return _cache;
 }
