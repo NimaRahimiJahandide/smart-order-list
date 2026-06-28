@@ -32,7 +32,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const sortOrder = sortOrderRaw === 'asc' ? 'asc' : ('desc' as const);
 
   // Simulate ~80ms server latency
-  await new Promise((r) => setTimeout(r, 80));
+  await new Promise((r) => setTimeout(r, 1000));
 
   let source = [...getMockOrdersCollection()];
 
