@@ -24,7 +24,7 @@ const EMPTY_STATS: OrderStats = {
 
 export default function OrdersPage() {
   const { filters, setFilters, resetFilters } = useOrderQueryState();
-  const shrunk = useScrollShrink()
+  const shrunk = useScrollShrink();
 
   // ── انباشتهٔ سفارش‌ها به‌جای «یک صفحه» ──────────────────────────────────
   const [orders, setOrders] = useState<Order[]>([]);
@@ -129,21 +129,26 @@ export default function OrdersPage() {
     loadingRef.current = true;
     setIsFetchingNext(true);
 
-    fetchOrders(buildQuery(maxPage + 1))
+    const nextPage = maxPage + 1;
+
+    fetchOrders(buildQuery(nextPage))
       .then((result) => {
         setOrders((prev) => [...prev, ...result.data]);
         setTotalCount(result.totalCount);
         setStats(result.filteredStats);
-        setMaxPage((p) => p + 1);
+        setMaxPage(nextPage);
+
+        // بروزرسانی صفحه در URL بدون به هم ریختن استیت جاری
+        setFilters((prev) => ({ ...prev, page: nextPage }));
       })
       .catch(() => {
-        /* خطای بی‌صدا برای لودِ بعدی؛ کاربر می‌تواند با اسکرول دوباره تلاش کند */
+        /* خطای بی‌صدا */
       })
       .finally(() => {
         loadingRef.current = false;
         setIsFetchingNext(false);
       });
-  }, [maxPage, totalPages, buildQuery]);
+  }, [maxPage, totalPages, buildQuery, setFilters]);
 
   // ── لود صفحهٔ قبل → اضافه به ابتدای لیست ────────────────────────────────
   const loadPrev = useCallback(() => {
@@ -151,20 +156,24 @@ export default function OrdersPage() {
     loadingRef.current = true;
     setIsFetchingPrev(true);
 
-    fetchOrders(buildQuery(minPage - 1))
+    const prevPage = minPage - 1;
+
+    fetchOrders(buildQuery(prevPage))
       .then((result) => {
         setOrders((prev) => [...result.data, ...prev]);
         setTotalCount(result.totalCount);
         setStats(result.filteredStats);
-        setMinPage((p) => p - 1);
+        setMinPage(prevPage);
+
+        // بروزرسانی صفحه در URL
+        setFilters((prev) => ({ ...prev, page: prevPage }));
       })
       .catch(() => {})
       .finally(() => {
         loadingRef.current = false;
         setIsFetchingPrev(false);
       });
-  }, [minPage, buildQuery]);
-
+  }, [minPage, buildQuery, setFilters]);
   const handleRetry = useCallback(() => {
     setError(null);
     setIsInitial(true);
@@ -224,7 +233,11 @@ export default function OrdersPage() {
               shrunk ? "py-2" : "py-4",
             ].join(" ")}
           >
-            <DashboardStats stats={stats} isLoading={isInitial} shrunk={shrunk} />
+            <DashboardStats
+              stats={stats}
+              isLoading={isInitial}
+              shrunk={shrunk}
+            />
           </div>
 
           <div
@@ -302,7 +315,10 @@ export default function OrdersPage() {
         )}
       </div>
 
-      <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      <OrderDetailsModal
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+      />
     </main>
   );
 }

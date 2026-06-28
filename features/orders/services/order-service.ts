@@ -19,8 +19,9 @@ export async function fetchOrders(
   if (filters.dateRange !== 'all') params.set('dateRange', filters.dateRange);
   if (filters.customDateFrom)      params.set('dateFrom',  filters.customDateFrom);
   if (filters.customDateTo)        params.set('dateTo',    filters.customDateTo);
+  const url = `/api/orders?${params.toString()}`;
 
-  const res = await fetch(`/api/orders?${params.toString()}`, { signal });
+  const res = await fetch(url, { signal });
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
