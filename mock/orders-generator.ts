@@ -87,6 +87,6 @@ export function generateMockOrders(count = 10_000): Order[] {
 let _cache: Order[] | null = null;
 
 export function getMockOrdersCollection(): Order[] {
-  if (!_cache) _cache = generateMockOrders(10_000);
+  if (!_cache) _cache = generateMockOrders(11_000);
   return _cache;
 }
