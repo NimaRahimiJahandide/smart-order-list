@@ -1,59 +1,67 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useOrderQueryState } from '@/features/orders/hooks/use-order-query-state';
-import { useDebounce } from '@/hooks/use-debounce';
-import { fetchOrders, PaginatedResult } from '@/features/orders/services/order-service';
-import { Order, OrderStats } from '@/types/orders';
-import { DashboardStats } from '@/features/orders/components/dashboard-stats';
-import { OrderFiltersComponent } from '@/features/orders/components/order-filters';
-import { OrdersTable } from '@/features/orders/components/orders-table';
-import { OrderDetailsModal } from '@/features/orders/components/order-details-modal';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { ITEMS_PER_PAGE } from '@/constants/orders';
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useOrderQueryState } from "@/features/orders/hooks/use-order-query-state";
+import { useDebounce } from "@/hooks/use-debounce";
+import {
+  fetchOrders,
+  PaginatedResult,
+} from "@/features/orders/services/order-service";
+import { Order, OrderStats } from "@/types/orders";
+import { DashboardStats } from "@/features/orders/components/dashboard-stats";
+import { OrderFiltersComponent } from "@/features/orders/components/order-filters";
+import { OrdersTable } from "@/features/orders/components/orders-table";
+import { OrderDetailsModal } from "@/features/orders/components/order-details-modal";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ITEMS_PER_PAGE } from "@/constants/orders";
 
 const EMPTY_STATS: OrderStats = {
-  total: 0, pending: 0, paid: 0, shipped: 0, delivered: 0, cancelled: 0,
+  total: 0,
+  pending: 0,
+  paid: 0,
+  shipped: 0,
+  delivered: 0,
+  cancelled: 0,
 };
 
 export default function OrdersPage() {
   const { filters, setFilters, resetFilters } = useOrderQueryState();
 
-  // Accumulated list of ALL orders loaded so far across pages
-  const [allOrders, setAllOrders]         = useState<Order[]>([]);
-  const [totalCount, setTotalCount]       = useState(0);
+  // حالا فقط سفارشات صفحه فعلی را نگه می‌دارد (نه همه را)
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [filteredStats, setFilteredStats] = useState<OrderStats>(EMPTY_STATS);
-  const [currentPage, setCurrentPage]     = useState(1);
-  const [isFetching, setIsFetching]       = useState(false);
-  const [isInitial, setIsInitial]         = useState(true);
-  const [error, setError]                 = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isInitial, setIsInitial] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
-  // ── Debounced filter values ──────────────────────────────────────────────
-  const debouncedSearch    = useDebounce(filters.search, 300);
-  const debouncedStatus    = useDebounce(filters.status, 150);
-  const debouncedPriority  = useDebounce(filters.priority, 150);
+  // وابستگی‌های دیبانس...
+  const debouncedSearch = useDebounce(filters.search, 300);
+  const debouncedStatus = useDebounce(filters.status, 150);
+  const debouncedPriority = useDebounce(filters.priority, 150);
   const debouncedDateRange = useDebounce(filters.dateRange, 150);
-  const debouncedSortBy    = useDebounce(filters.sortBy, 150);
+  const debouncedSortBy = useDebounce(filters.sortBy, 150);
   const debouncedSortOrder = useDebounce(filters.sortOrder, 150);
 
   const filterKey = JSON.stringify({
-    search:         debouncedSearch,
-    status:         debouncedStatus,
-    priority:       debouncedPriority,
-    dateRange:      debouncedDateRange,
-    sortBy:         debouncedSortBy,
-    sortOrder:      debouncedSortOrder,
-    customDateFrom: filters.customDateFrom ?? '',
-    customDateTo:   filters.customDateTo   ?? '',
+    search: debouncedSearch,
+    status: debouncedStatus,
+    priority: debouncedPriority,
+    dateRange: debouncedDateRange,
+    sortBy: debouncedSortBy,
+    sortOrder: debouncedSortOrder,
+    customDateFrom: filters.customDateFrom ?? "",
+    customDateTo: filters.customDateTo ?? "",
   });
 
-  // ── Load a specific page, appending to existing list ────────────────────
+  // لود صفحه مشخص و جایگزینی کامل داده‌ها
   const loadPage = useCallback(
-    async (page: number, replace: boolean) => {
-      if (isFetching) return;
+    async (page: number, replace: boolean = true) => {
+      if (isFetching && currentPage === page) return;
 
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -64,42 +72,65 @@ export default function OrdersPage() {
       setError(null);
 
       try {
-        const result: PaginatedResult = await fetchOrders(
-          {
-            ...filters,
-            search:         debouncedSearch,
-            status:         debouncedStatus,
-            priority:       debouncedPriority,
-            dateRange:      debouncedDateRange,
-            sortBy:         debouncedSortBy,
-            sortOrder:      debouncedSortOrder,
-            customDateFrom: filters.customDateFrom,
-            customDateTo:   filters.customDateTo,
-            page,
-          },
-          controller.signal,
+        // ایجاد یک پرومیس برای تاخیر تعمدی ۱ ثانیه‌ای
+        const delayPromise = new Promise((resolve) =>
+          setTimeout(resolve, 1000),
         );
+
+        // اجرای همزمان فچ و تاخیر ۱ ثانیه‌ای
+        const [result] = await Promise.all([
+          fetchOrders(
+            {
+              ...filters,
+              search: debouncedSearch,
+              status: debouncedStatus,
+              priority: debouncedPriority,
+              dateRange: debouncedDateRange,
+              sortBy: debouncedSortBy,
+              sortOrder: debouncedSortOrder,
+              customDateFrom: filters.customDateFrom,
+              customDateTo: filters.customDateTo,
+              page,
+            },
+            controller.signal,
+          ),
+          delayPromise, // این باعث می‌شود کل فرآیند حداقل ۱ ثانیه طول بکشد
+        ]);
 
         if (controller.signal.aborted) return;
 
-        setAllOrders((prev) => replace ? result.data : [...prev, ...result.data]);
+        setAllOrders(result.data);
         setTotalCount(result.totalCount);
         setFilteredStats(result.filteredStats);
         setCurrentPage(page);
         setFilters({ page });
       } catch (err) {
-        if ((err as Error).name === 'AbortError') return;
-        setError((err as Error).message || 'خطای سیستم در هنگام دریافت داده‌ها رخ داد.');
+        if ((err as Error).name === "AbortError") return;
+        setError(
+          (err as Error).message ||
+            "خطای سیستم در هنگام دریافت داده‌ها رخ داد.",
+        );
       } finally {
         setIsFetching(false);
         setIsInitial(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filterKey, isFetching],
+    [
+      filterKey,
+      isFetching,
+      currentPage,
+      filters,
+      debouncedSearch,
+      debouncedStatus,
+      debouncedPriority,
+      debouncedDateRange,
+      debouncedSortBy,
+      debouncedSortOrder,
+      setFilters,
+    ],
   );
 
-  // ── Reset & reload from page 1 when filters change ──────────────────────
+  // ریست و لود مجدد در زمان تغییر فیلترها
   const prevFilterKey = useRef<string | null>(null);
   useEffect(() => {
     if (prevFilterKey.current === filterKey) return;
@@ -107,24 +138,32 @@ export default function OrdersPage() {
     setAllOrders([]);
     setCurrentPage(1);
     loadPage(1, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterKey]);
+  }, [filterKey, loadPage]);
 
-  // ── Called by InfiniteScroll when user reaches the bottom ────────────────
-  const loadMore = useCallback(() => {
-    loadPage(currentPage + 1, false);
-  }, [currentPage, loadPage]);
+  // توابع رفتن به صفحه قبل و بعد
+  const loadNextPage = useCallback(() => {
+    const totalPages = Math.max(Math.ceil(totalCount / ITEMS_PER_PAGE), 1);
+    if (currentPage < totalPages && !isFetching) {
+      loadPage(currentPage + 1, true);
+    }
+  }, [currentPage, totalCount, isFetching, loadPage]);
+
+  const loadPrevPage = useCallback(() => {
+    if (currentPage > 1 && !isFetching) {
+      loadPage(currentPage - 1, true);
+    }
+  }, [currentPage, isFetching, loadPage]);
 
   const totalPages = Math.max(Math.ceil(totalCount / ITEMS_PER_PAGE), 1);
-  const hasMore    = currentPage < totalPages && !isFetching;
 
   const handleRetry = useCallback(() => {
     setError(null);
-    loadPage(currentPage, false);
+    loadPage(currentPage, true);
   }, [currentPage, loadPage]);
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8 space-y-6">
+      {/* ... هدر و استت‌ها تغییری نمی‌کنند ... */}
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5 dark:border-slate-800">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -134,15 +173,11 @@ export default function OrdersPage() {
         <ThemeToggle />
       </header>
 
-      <DashboardStats
-        stats={filteredStats}
-        isLoading={isInitial}
-      />
+      <DashboardStats stats={filteredStats} isLoading={isInitial} />
 
       <OrderFiltersComponent
         filters={filters}
         onFilterChange={(updater) => {
-          // When filters change, clear accumulated list so table resets cleanly
           setAllOrders([]);
           setCurrentPage(1);
           setFilters(updater);
@@ -156,18 +191,19 @@ export default function OrdersPage() {
       />
 
       {error ? (
+        // ... بخش نمایش خطا تغییری نمی‌کند ...
         <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-6 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
           <div className="flex flex-col items-center gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              className="h-8 w-8 text-rose-500" aria-hidden="true">
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
-              <path d="M12 9v4" /><path d="M12 17h.01" />
-            </svg>
-            <h3 className="text-base font-semibold text-rose-900 dark:text-rose-400">خطای اتصال به داده‌ها</h3>
-            <p className="text-sm text-rose-700 dark:text-rose-300 max-w-md">{error}</p>
-            <button onClick={handleRetry}
-              className="mt-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-colors">
+            <h3 className="text-base font-semibold text-rose-900 dark:text-rose-400">
+              خطای اتصال به داده‌ها
+            </h3>
+            <p className="text-sm text-rose-700 dark:text-rose-300 max-w-md">
+              {error}
+            </p>
+            <button
+              onClick={handleRetry}
+              className="mt-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+            >
               تلاش مجدد
             </button>
           </div>
@@ -178,12 +214,13 @@ export default function OrdersPage() {
           totalCount={totalCount}
           currentPage={currentPage}
           totalPages={totalPages}
-          hasMore={hasMore}
+          hasMore={currentPage < totalPages}
           isFetching={isFetching}
           isInitial={isInitial}
           filters={filters}
           onFilterChange={setFilters}
-          onLoadMore={loadMore}
+          onLoadMore={loadNextPage} // به عنوان صفحه بعد عمل می‌کند
+          onLoadLess={loadPrevPage} // تابع جدید برای صفحه قبل
           onSelectOrder={setSelectedOrder}
         />
       )}
