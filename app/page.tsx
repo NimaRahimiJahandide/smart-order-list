@@ -3,10 +3,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useOrderQueryState } from "@/features/orders/hooks/use-order-query-state";
 import { useDebounce } from "@/hooks/use-debounce";
-import {
-  fetchOrders,
-  PaginatedResult,
-} from "@/features/orders/services/order-service";
+import { fetchOrders } from "@/features/orders/services/order-service";
 import { Order, OrderStats } from "@/types/orders";
 import { DashboardStats } from "@/features/orders/components/dashboard-stats";
 import { OrderFiltersComponent } from "@/features/orders/components/order-filters";
@@ -25,26 +22,26 @@ const EMPTY_STATS: OrderStats = {
   cancelled: 0,
 };
 
-const SCROLL_THRESHOLD = 250;
-
 export default function OrdersPage() {
   const { filters, setFilters, resetFilters } = useOrderQueryState();
-  const shrunk = useScrollShrink({ threshold: 60, hysteresis: 20 });
+  const shrunk = useScrollShrink()
 
-  const [currentPage, setCurrentPage] = useState(filters.page);
-  const [payload, setPayload] = useState<PaginatedResult | null>(null);
+  // ── انباشتهٔ سفارش‌ها به‌جای «یک صفحه» ──────────────────────────────────
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [minPage, setMinPage] = useState(1); // قدیمی‌ترین صفحهٔ لود شده
+  const [maxPage, setMaxPage] = useState(1); // جدیدترین صفحهٔ لود شده
+  const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState<OrderStats>(EMPTY_STATS);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState<
-    "top" | "bottom" | "initial" | null
-  >("initial");
 
-  const abortRef = useRef<AbortController | null>(null);
+  const [isInitial, setIsInitial] = useState(true);
+  const [isFetchingNext, setIsFetchingNext] = useState(false); // اسکلتون پایین جدول
+  const [isFetchingPrev, setIsFetchingPrev] = useState(false); // اسکلتون بالای جدول
+
   const loadingRef = useRef(false);
-  const currentPageRef = useRef(currentPage);
-  currentPageRef.current = currentPage;
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Measure sticky header height so we can push content down correctly
   const stickyRef = useRef<HTMLDivElement>(null);
   const [stickyHeight, setStickyHeight] = useState(0);
 
@@ -57,7 +54,6 @@ export default function OrdersPage() {
     return () => ro.disconnect();
   }, []);
 
-  // ── Debounced filter values ──────────────────────────────────────────────
   const debouncedSearch = useDebounce(filters.search, 300);
   const debouncedStatus = useDebounce(filters.status, 150);
   const debouncedPriority = useDebounce(filters.priority, 150);
@@ -76,79 +72,117 @@ export default function OrdersPage() {
     customDateTo: filters.customDateTo ?? "",
   });
 
-  // ── Core fetch ───────────────────────────────────────────────────────────
-  const loadPage = useCallback(
-    (page: number, direction: "top" | "bottom" | "initial") => {
-      if (loadingRef.current) return;
-      loadingRef.current = true;
-
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      setIsLoadingMore(direction);
-      setError(null);
-
-      fetchOrders(
-        {
-          ...filters,
-          search: debouncedSearch,
-          status: debouncedStatus,
-          priority: debouncedPriority,
-          dateRange: debouncedDateRange,
-          sortBy: debouncedSortBy,
-          sortOrder: debouncedSortOrder,
-          customDateFrom: filters.customDateFrom,
-          customDateTo: filters.customDateTo,
-          page,
-        },
-        controller.signal,
-      )
-        .then((result) => {
-          if (controller.signal.aborted) return;
-          setPayload(result);
-          setCurrentPage(page);
-          currentPageRef.current = page;
-          setFilters({ page });
-          setIsLoadingMore(null);
-        })
-        .catch((err: Error) => {
-          if (err.name === "AbortError") return;
-          setError(err.message || "خطای سیستم در هنگام دریافت داده‌ها رخ داد.");
-          setIsLoadingMore(null);
-        })
-        .finally(() => {
-          loadingRef.current = false;
-        });
-    },
+  const buildQuery = useCallback(
+    (page: number) => ({
+      ...filters,
+      search: debouncedSearch,
+      status: debouncedStatus,
+      priority: debouncedPriority,
+      dateRange: debouncedDateRange,
+      sortBy: debouncedSortBy,
+      sortOrder: debouncedSortOrder,
+      customDateFrom: filters.customDateFrom,
+      customDateTo: filters.customDateTo,
+      page,
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [filterKey],
   );
 
-  // ── Reset to page 1 when filters change ─────────────────────────────────
-  const prevFilterKey = useRef<string | null>(null);
+  // ── لود اولیه / تغییر فیلتر: کل لیست از صفر ساخته می‌شه ─────────────────
   useEffect(() => {
-    if (prevFilterKey.current === null) {
-      prevFilterKey.current = filterKey;
-      loadPage(filters.page, "initial");
-      return;
-    }
-    if (prevFilterKey.current === filterKey) return;
-    prevFilterKey.current = filterKey;
-    loadPage(1, "initial");
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    loadingRef.current = true;
+
+    setIsInitial(true);
+    setError(null);
+
+    const anchorPage = filters.page > 0 ? filters.page : 1;
+
+    fetchOrders(buildQuery(anchorPage), controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        setOrders(result.data);
+        setTotalCount(result.totalCount);
+        setStats(result.filteredStats);
+        setMinPage(anchorPage);
+        setMaxPage(anchorPage);
+      })
+      .catch((err: Error) => {
+        if (err.name === "AbortError") return;
+        setError(err.message || "خطای سیستم در هنگام دریافت داده‌ها رخ داد.");
+      })
+      .finally(() => {
+        loadingRef.current = false;
+        setIsInitial(false);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey]);
 
-  // ── Derived ──────────────────────────────────────────────────────────────
-  const totalCount = payload?.totalCount ?? 0;
   const totalPages = Math.max(Math.ceil(totalCount / ITEMS_PER_PAGE), 1);
-  const totalPagesRef = useRef(totalPages);
-  totalPagesRef.current = totalPages;
+
+  // ── لود صفحهٔ بعد → اضافه به انتهای لیست ────────────────────────────────
+  const loadNext = useCallback(() => {
+    if (loadingRef.current || maxPage >= totalPages) return;
+    loadingRef.current = true;
+    setIsFetchingNext(true);
+
+    fetchOrders(buildQuery(maxPage + 1))
+      .then((result) => {
+        setOrders((prev) => [...prev, ...result.data]);
+        setTotalCount(result.totalCount);
+        setStats(result.filteredStats);
+        setMaxPage((p) => p + 1);
+      })
+      .catch(() => {
+        /* خطای بی‌صدا برای لودِ بعدی؛ کاربر می‌تواند با اسکرول دوباره تلاش کند */
+      })
+      .finally(() => {
+        loadingRef.current = false;
+        setIsFetchingNext(false);
+      });
+  }, [maxPage, totalPages, buildQuery]);
+
+  // ── لود صفحهٔ قبل → اضافه به ابتدای لیست ────────────────────────────────
+  const loadPrev = useCallback(() => {
+    if (loadingRef.current || minPage <= 1) return;
+    loadingRef.current = true;
+    setIsFetchingPrev(true);
+
+    fetchOrders(buildQuery(minPage - 1))
+      .then((result) => {
+        setOrders((prev) => [...result.data, ...prev]);
+        setTotalCount(result.totalCount);
+        setStats(result.filteredStats);
+        setMinPage((p) => p - 1);
+      })
+      .catch(() => {})
+      .finally(() => {
+        loadingRef.current = false;
+        setIsFetchingPrev(false);
+      });
+  }, [minPage, buildQuery]);
 
   const handleRetry = useCallback(() => {
     setError(null);
-    loadPage(currentPage, "initial");
-  }, [currentPage, loadPage]);
+    setIsInitial(true);
+    loadingRef.current = true;
+
+    fetchOrders(buildQuery(minPage))
+      .then((result) => {
+        setOrders(result.data);
+        setTotalCount(result.totalCount);
+        setStats(result.filteredStats);
+        setMaxPage(minPage);
+      })
+      .catch((err: Error) => setError(err.message || "خطای سیستم"))
+      .finally(() => {
+        loadingRef.current = false;
+        setIsInitial(false);
+      });
+  }, [buildQuery, minPage]);
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
@@ -164,7 +198,6 @@ export default function OrdersPage() {
         ].join(" ")}
       >
         <div className="container mx-auto max-w-7xl px-4">
-          {/* Page header */}
           <header
             className={[
               "flex items-center justify-between transition-all duration-500 ease-in-out",
@@ -185,21 +218,15 @@ export default function OrdersPage() {
             <ThemeToggle />
           </header>
 
-          {/* Stats */}
           <div
             className={[
               "transition-all duration-500 ease-in-out overflow-hidden",
               shrunk ? "py-2" : "py-4",
             ].join(" ")}
           >
-            <DashboardStats
-              stats={payload?.filteredStats ?? EMPTY_STATS}
-              isLoading={isLoadingMore === "initial"}
-              shrunk={shrunk}
-            />
+            <DashboardStats stats={stats} isLoading={isInitial} shrunk={shrunk} />
           </div>
 
-          {/* Filters */}
           <div
             className={[
               "transition-all duration-500 ease-in-out",
@@ -210,21 +237,19 @@ export default function OrdersPage() {
               filters={filters}
               onFilterChange={setFilters}
               onReset={resetFilters}
-              allFilteredOrders={payload?.data ?? []}
+              allFilteredOrders={orders}
               shrunk={shrunk}
             />
           </div>
         </div>
       </div>
 
-      {/* ── Spacer that matches the sticky area height ──────────────────── */}
       <div
         style={{ height: stickyHeight }}
         className="transition-all duration-500 ease-in-out"
         aria-hidden="true"
       />
 
-      {/* ── Scrollable content ───────────────────────────────────────────── */}
       <div className="mt-4">
         {error ? (
           <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-6 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
@@ -260,34 +285,24 @@ export default function OrdersPage() {
           </div>
         ) : (
           <OrdersTable
-            orders={payload?.data ?? []}
+            orders={orders}
             totalCount={totalCount}
-            currentPage={currentPage}
+            minPage={minPage}
+            maxPage={maxPage}
             totalPages={totalPages}
             filters={filters}
             onFilterChange={setFilters}
             onSelectOrder={setSelectedOrder}
-            isFetching={isLoadingMore !== null}
-            isInitial={isLoadingMore === "initial"}
-            hasMore={currentPage < totalPages}
-            onLoadMore={useCallback(() => {
-              if (currentPage < totalPages) {
-                loadPage(currentPage + 1, "bottom");
-              }
-            }, [currentPage, totalPages, loadPage])}
-            onLoadLess={useCallback(() => {
-              if (currentPage > 1) {
-                loadPage(currentPage - 1, "top");
-              }
-            }, [currentPage, loadPage])}
+            isInitial={isInitial}
+            isFetchingNext={isFetchingNext}
+            isFetchingPrev={isFetchingPrev}
+            onLoadMore={loadNext}
+            onLoadPrev={loadPrev}
           />
         )}
       </div>
 
-      <OrderDetailsModal
-        order={selectedOrder}
-        onClose={() => setSelectedOrder(null)}
-      />
+      <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
     </main>
   );
 }
