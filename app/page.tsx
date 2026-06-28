@@ -22,22 +22,30 @@ const EMPTY_STATS: OrderStats = {
   cancelled: 0,
 };
 
+// ── پنجره sliding: حداکثر ۲ صفحه در حافظه ──────────────────────────────
+const WINDOW_SIZE = 2;
+
 export default function OrdersPage() {
   const { filters, setFilters, resetFilters } = useOrderQueryState();
   const shrunk = useScrollShrink();
 
-  // ── انباشتهٔ سفارش‌ها به‌جای «یک صفحه» ──────────────────────────────────
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [minPage, setMinPage] = useState(1); // قدیمی‌ترین صفحهٔ لود شده
-  const [maxPage, setMaxPage] = useState(1); // جدیدترین صفحهٔ لود شده
+  /**
+   * به‌جای یک آرایه انباشته، یک Map نگه می‌داریم:
+   *   pageCache: Map<pageNumber, Order[]>
+   * و از minPage/maxPage فقط برای تعیین بازه نمایش استفاده می‌کنیم.
+   * orders نهایی = مقادیر Map مرتب‌شده بر اساس کلید.
+   */
+  const [pageCache, setPageCache] = useState<Map<number, Order[]>>(new Map());
+  const [minPage, setMinPage] = useState(1);
+  const [maxPage, setMaxPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<OrderStats>(EMPTY_STATS);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const [isInitial, setIsInitial] = useState(true);
-  const [isFetchingNext, setIsFetchingNext] = useState(false); // اسکلتون پایین جدول
-  const [isFetchingPrev, setIsFetchingPrev] = useState(false); // اسکلتون بالای جدول
+  const [isFetchingNext, setIsFetchingNext] = useState(false);
+  const [isFetchingPrev, setIsFetchingPrev] = useState(false);
 
   const loadingRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -89,7 +97,20 @@ export default function OrdersPage() {
     [filterKey],
   );
 
-  // ── لود اولیه / تغییر فیلتر: کل لیست از صفر ساخته می‌شه ─────────────────
+  // ── helper: آرایه سفارشات از cache بر اساس minPage/maxPage ─────────────
+  const buildOrdersFromCache = useCallback(
+    (cache: Map<number, Order[]>, min: number, max: number): Order[] => {
+      const result: Order[] = [];
+      for (let p = min; p <= max; p++) {
+        const page = cache.get(p);
+        if (page) result.push(...page);
+      }
+      return result;
+    },
+    [],
+  );
+
+  // ── لود اولیه / تغییر فیلتر ─────────────────────────────────────────────
   useEffect(() => {
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -104,7 +125,9 @@ export default function OrdersPage() {
     fetchOrders(buildQuery(anchorPage), controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return;
-        setOrders(result.data);
+        const newCache = new Map<number, Order[]>();
+        newCache.set(anchorPage, result.data);
+        setPageCache(newCache);
         setTotalCount(result.totalCount);
         setStats(result.filteredStats);
         setMinPage(anchorPage);
@@ -123,7 +146,7 @@ export default function OrdersPage() {
 
   const totalPages = Math.max(Math.ceil(totalCount / ITEMS_PER_PAGE), 1);
 
-  // ── لود صفحهٔ بعد → اضافه به انتهای لیست ────────────────────────────────
+  // ── لود صفحه بعد → sliding window به جلو ────────────────────────────────
   const loadNext = useCallback(() => {
     if (loadingRef.current || maxPage >= totalPages) return;
     loadingRef.current = true;
@@ -133,24 +156,31 @@ export default function OrdersPage() {
 
     fetchOrders(buildQuery(nextPage))
       .then((result) => {
-        setOrders((prev) => [...prev, ...result.data]);
+        setPageCache((prev) => {
+          const updated = new Map(prev);
+          updated.set(nextPage, result.data);
+
+          // حذف صفحه‌های خارج از window از انتهای پشتی
+          const newMin = nextPage - WINDOW_SIZE + 1;
+          for (const key of updated.keys()) {
+            if (key < newMin) updated.delete(key);
+          }
+          return updated;
+        });
         setTotalCount(result.totalCount);
         setStats(result.filteredStats);
         setMaxPage(nextPage);
-
-        // بروزرسانی صفحه در URL بدون به هم ریختن استیت جاری
+        setMinPage((prev) => Math.max(prev, nextPage - WINDOW_SIZE + 1));
         setFilters((prev) => ({ ...prev, page: nextPage }));
       })
-      .catch(() => {
-        /* خطای بی‌صدا */
-      })
+      .catch(() => {})
       .finally(() => {
         loadingRef.current = false;
         setIsFetchingNext(false);
       });
   }, [maxPage, totalPages, buildQuery, setFilters]);
 
-  // ── لود صفحهٔ قبل → اضافه به ابتدای لیست ────────────────────────────────
+  // ── لود صفحه قبل → sliding window به عقب ────────────────────────────────
   const loadPrev = useCallback(() => {
     if (loadingRef.current || minPage <= 1) return;
     loadingRef.current = true;
@@ -160,12 +190,21 @@ export default function OrdersPage() {
 
     fetchOrders(buildQuery(prevPage))
       .then((result) => {
-        setOrders((prev) => [...result.data, ...prev]);
+        setPageCache((prev) => {
+          const updated = new Map(prev);
+          updated.set(prevPage, result.data);
+
+          // حذف صفحه‌های خارج از window از انتهای جلویی
+          const newMax = prevPage + WINDOW_SIZE - 1;
+          for (const key of updated.keys()) {
+            if (key > newMax) updated.delete(key);
+          }
+          return updated;
+        });
         setTotalCount(result.totalCount);
         setStats(result.filteredStats);
         setMinPage(prevPage);
-
-        // بروزرسانی صفحه در URL
+        setMaxPage((prev) => Math.min(prev, prevPage + WINDOW_SIZE - 1));
         setFilters((prev) => ({ ...prev, page: prevPage }));
       })
       .catch(() => {})
@@ -174,6 +213,7 @@ export default function OrdersPage() {
         setIsFetchingPrev(false);
       });
   }, [minPage, buildQuery, setFilters]);
+
   const handleRetry = useCallback(() => {
     setError(null);
     setIsInitial(true);
@@ -181,7 +221,9 @@ export default function OrdersPage() {
 
     fetchOrders(buildQuery(minPage))
       .then((result) => {
-        setOrders(result.data);
+        const newCache = new Map<number, Order[]>();
+        newCache.set(minPage, result.data);
+        setPageCache(newCache);
         setTotalCount(result.totalCount);
         setStats(result.filteredStats);
         setMaxPage(minPage);
@@ -192,6 +234,9 @@ export default function OrdersPage() {
         setIsInitial(false);
       });
   }, [buildQuery, minPage]);
+
+  // ── orders نهایی از cache ────────────────────────────────────────────────
+  const orders = buildOrdersFromCache(pageCache, minPage, maxPage);
 
   return (
     <main className="container min-h-screen mx-auto max-w-7xl px-4 py-8">

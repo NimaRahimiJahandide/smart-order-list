@@ -182,21 +182,10 @@ export const OrdersTable: React.FC<TableProps> = ({
 
   return (
     <div className="relative rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden flex flex-col">
-
-      {/* نوار وضعیت */}
-      <div className="flex justify-between items-center px-5 py-2.5 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500">
-        <span>
-          صفحات بارگذاری‌شده: {minPage.toLocaleString("fa-IR")} تا{" "}
-          {maxPage.toLocaleString("fa-IR")} از{" "}
-          {totalPages.toLocaleString("fa-IR")}
-        </span>
-        <span>کل سفارشات: {totalCount.toLocaleString("fa-IR")}</span>
-      </div>
-
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="overflow-x-auto overflow-y-auto max-h-[70vh] scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="overflow-x-auto overflow-y-auto max-h-[75vh] scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         <table className="w-full text-right border-collapse">
           <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 z-10 shadow-[0_1px_0_0_rgba(226,232,240,1)] dark:shadow-[0_1px_0_0_rgba(51,65,85,1)]">
