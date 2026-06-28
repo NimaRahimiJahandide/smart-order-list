@@ -16,24 +16,22 @@ const EMPTY_STATS: OrderStats = {
   total: 0, pending: 0, paid: 0, shipped: 0, delivered: 0, cancelled: 0,
 };
 
-// How many px from the top/bottom edge of the page to trigger load
-const SCROLL_THRESHOLD = 250;
-
 export default function OrdersPage() {
   const { filters, setFilters, resetFilters } = useOrderQueryState();
 
-  const [currentPage, setCurrentPage]         = useState(filters.page);
-  const [payload, setPayload]                 = useState<PaginatedResult | null>(null);
-  const [error, setError]                     = useState<string | null>(null);
-  const [selectedOrder, setSelectedOrder]     = useState<Order | null>(null);
-  const [isLoadingMore, setIsLoadingMore]     = useState<'top' | 'bottom' | 'initial' | null>('initial');
+  // Accumulated list of ALL orders loaded so far across pages
+  const [allOrders, setAllOrders]         = useState<Order[]>([]);
+  const [totalCount, setTotalCount]       = useState(0);
+  const [filteredStats, setFilteredStats] = useState<OrderStats>(EMPTY_STATS);
+  const [currentPage, setCurrentPage]     = useState(1);
+  const [isFetching, setIsFetching]       = useState(false);
+  const [isInitial, setIsInitial]         = useState(true);
+  const [error, setError]                 = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  const abortRef        = useRef<AbortController | null>(null);
-  const loadingRef      = useRef(false);   // sync guard for scroll handler
-  const currentPageRef  = useRef(currentPage);
-  currentPageRef.current = currentPage;
+  const abortRef = useRef<AbortController | null>(null);
 
-  // ── Debounced filter values ───────────────────────────────────────────────
+  // ── Debounced filter values ──────────────────────────────────────────────
   const debouncedSearch    = useDebounce(filters.search, 300);
   const debouncedStatus    = useDebounce(filters.status, 150);
   const debouncedPriority  = useDebounce(filters.priority, 150);
@@ -42,111 +40,87 @@ export default function OrdersPage() {
   const debouncedSortOrder = useDebounce(filters.sortOrder, 150);
 
   const filterKey = JSON.stringify({
-    search:        debouncedSearch,
-    status:        debouncedStatus,
-    priority:      debouncedPriority,
-    dateRange:     debouncedDateRange,
-    sortBy:        debouncedSortBy,
-    sortOrder:     debouncedSortOrder,
+    search:         debouncedSearch,
+    status:         debouncedStatus,
+    priority:       debouncedPriority,
+    dateRange:      debouncedDateRange,
+    sortBy:         debouncedSortBy,
+    sortOrder:      debouncedSortOrder,
     customDateFrom: filters.customDateFrom ?? '',
     customDateTo:   filters.customDateTo   ?? '',
   });
 
-  // ── Core fetch ────────────────────────────────────────────────────────────
+  // ── Load a specific page, appending to existing list ────────────────────
   const loadPage = useCallback(
-    (page: number, direction: 'top' | 'bottom' | 'initial') => {
-      if (loadingRef.current) return;
-      loadingRef.current = true;
+    async (page: number, replace: boolean) => {
+      if (isFetching) return;
 
       abortRef.current?.abort();
-      const controller  = new AbortController();
-      abortRef.current  = controller;
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-      setIsLoadingMore(direction);
+      setIsFetching(true);
+      if (replace) setIsInitial(true);
       setError(null);
 
-      fetchOrders(
-        {
-          ...filters,
-          search:    debouncedSearch,
-          status:    debouncedStatus,
-          priority:  debouncedPriority,
-          dateRange: debouncedDateRange,
-          sortBy:    debouncedSortBy,
-          sortOrder: debouncedSortOrder,
-          customDateFrom: filters.customDateFrom,
-          customDateTo:   filters.customDateTo,
-          page,
-        },
-        controller.signal,
-      )
-        .then((result) => {
-          if (controller.signal.aborted) return;
-          setPayload(result);
-          setCurrentPage(page);
-          currentPageRef.current = page;
-          setFilters({ page });
-          setIsLoadingMore(null);
-        })
-        .catch((err: Error) => {
-          if (err.name === 'AbortError') return;
-          setError(err.message || 'خطای سیستم در هنگام دریافت داده‌ها رخ داد.');
-          setIsLoadingMore(null);
-        })
-        .finally(() => {
-          loadingRef.current = false;
-        });
+      try {
+        const result: PaginatedResult = await fetchOrders(
+          {
+            ...filters,
+            search:         debouncedSearch,
+            status:         debouncedStatus,
+            priority:       debouncedPriority,
+            dateRange:      debouncedDateRange,
+            sortBy:         debouncedSortBy,
+            sortOrder:      debouncedSortOrder,
+            customDateFrom: filters.customDateFrom,
+            customDateTo:   filters.customDateTo,
+            page,
+          },
+          controller.signal,
+        );
+
+        if (controller.signal.aborted) return;
+
+        setAllOrders((prev) => replace ? result.data : [...prev, ...result.data]);
+        setTotalCount(result.totalCount);
+        setFilteredStats(result.filteredStats);
+        setCurrentPage(page);
+        setFilters({ page });
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+        setError((err as Error).message || 'خطای سیستم در هنگام دریافت داده‌ها رخ داد.');
+      } finally {
+        setIsFetching(false);
+        setIsInitial(false);
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filterKey],
+    [filterKey, isFetching],
   );
 
-  // ── Reset to page 1 when filters change ──────────────────────────────────
+  // ── Reset & reload from page 1 when filters change ──────────────────────
   const prevFilterKey = useRef<string | null>(null);
   useEffect(() => {
-    if (prevFilterKey.current === null) {
-      // first render — load initial page from URL
-      prevFilterKey.current = filterKey;
-      loadPage(filters.page, 'initial');
-      return;
-    }
     if (prevFilterKey.current === filterKey) return;
     prevFilterKey.current = filterKey;
-    loadPage(1, 'initial');
+    setAllOrders([]);
+    setCurrentPage(1);
+    loadPage(1, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey]);
 
-  // ── Derived ───────────────────────────────────────────────────────────────
-  const totalCount = payload?.totalCount ?? 0;
+  // ── Called by InfiniteScroll when user reaches the bottom ────────────────
+  const loadMore = useCallback(() => {
+    loadPage(currentPage + 1, false);
+  }, [currentPage, loadPage]);
+
   const totalPages = Math.max(Math.ceil(totalCount / ITEMS_PER_PAGE), 1);
-  const totalPagesRef = useRef(totalPages);
-  totalPagesRef.current = totalPages;
-
-  // ── Window scroll → infinite load ────────────────────────────────────────
-  useEffect(() => {
-    const handleScroll = () => {
-      if (loadingRef.current) return;
-
-      const scrollY      = window.scrollY;
-      const windowHeight = window.innerHeight;
-      const docHeight    = document.documentElement.scrollHeight;
-      const distFromTop    = scrollY;
-      const distFromBottom = docHeight - scrollY - windowHeight;
-
-      if (distFromBottom < SCROLL_THRESHOLD && currentPageRef.current < totalPagesRef.current) {
-        loadPage(currentPageRef.current + 1, 'bottom');
-      } else if (distFromTop < SCROLL_THRESHOLD && currentPageRef.current > 1) {
-        loadPage(currentPageRef.current - 1, 'top');
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [loadPage]);
+  const hasMore    = currentPage < totalPages && !isFetching;
 
   const handleRetry = useCallback(() => {
     setError(null);
-    loadPage(currentPage, 'initial');
+    loadPage(currentPage, false);
   }, [currentPage, loadPage]);
 
   return (
@@ -161,15 +135,24 @@ export default function OrdersPage() {
       </header>
 
       <DashboardStats
-        stats={payload?.filteredStats ?? EMPTY_STATS}
-        isLoading={isLoadingMore === 'initial'}
+        stats={filteredStats}
+        isLoading={isInitial}
       />
 
       <OrderFiltersComponent
         filters={filters}
-        onFilterChange={setFilters}
-        onReset={resetFilters}
-        allFilteredOrders={payload?.data ?? []}
+        onFilterChange={(updater) => {
+          // When filters change, clear accumulated list so table resets cleanly
+          setAllOrders([]);
+          setCurrentPage(1);
+          setFilters(updater);
+        }}
+        onReset={() => {
+          setAllOrders([]);
+          setCurrentPage(1);
+          resetFilters();
+        }}
+        allFilteredOrders={allOrders}
       />
 
       {error ? (
@@ -191,13 +174,16 @@ export default function OrdersPage() {
         </div>
       ) : (
         <OrdersTable
-          orders={payload?.data ?? []}
+          orders={allOrders}
           totalCount={totalCount}
           currentPage={currentPage}
           totalPages={totalPages}
+          hasMore={hasMore}
+          isFetching={isFetching}
+          isInitial={isInitial}
           filters={filters}
           onFilterChange={setFilters}
-          isLoadingMore={isLoadingMore}
+          onLoadMore={loadMore}
           onSelectOrder={setSelectedOrder}
         />
       )}
